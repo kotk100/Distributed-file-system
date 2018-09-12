@@ -4,8 +4,13 @@ services:
     image: test/dfs:latest
     stdin_open: true
     tty: true
+    environment:
+      BOOTSTRAP_ADDR: "bootstrapingNode:44135"
+      LISTEN_PORT: ":44135"
+    depends_on:
+    - "bootstrapingNode"
     deploy:
-      replicas: 5  
+      replicas: 5
 #        resources:
 #           limits:
 #              cpus: "0.1"
@@ -15,7 +20,40 @@ services:
 #    ports:
 #      - "4000:80"
     networks:
+    - kademlia_network
+
+  bootstrapingNode:
+    image: test/dfs:latest
+    stdin_open: true
+    tty: true
+    environment:
+      LISTEN_PORT: ":44135"
+    deploy:
+      replicas: 1
+      #        resources:
+      #           limits:
+      #              cpus: "0.1"
+      #              memory: 50M
+      restart_policy:
+        condition: on-failure
+  #    ports:
+  #      - "4000:80"
+    networks:
       - kademlia_network
-      
+
+  testNode:
+    image: larjim/kademlialab:latest
+    stdin_open: true
+    tty: true
+    environment:
+      BOOTSTRAP_ADDR: "bootstrapingNode:44135"
+      LISTEN_PORT: ":44135"
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+    networks:
+    - kademlia_network
+
 networks:
   kademlia_network:
