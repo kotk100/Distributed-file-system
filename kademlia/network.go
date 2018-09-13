@@ -23,6 +23,7 @@ func handleConnection() {
 }
 
 func Listen( /*ip string,*/ port string) {
+	fmt.Println("Entered function Listen.")
 	// TODO read port from ENV
 	ln, err := net.ListenPacket("udp", port)
 	if err != nil {
@@ -30,8 +31,15 @@ func Listen( /*ip string,*/ port string) {
 		fmt.Println(err)
 	}
 	buffer := make([]byte, 1024)
-	ln.ReadFrom(buffer)
-	fmt.Println("Message recieved.")
+	fmt.Println("Waiting for message.")
+	n, addr, err := ln.ReadFrom(buffer)
+	if err != nil {
+		//TODO handle error
+		fmt.Println(n)
+		fmt.Println(err)
+	}
+	fmt.Print("Message recieved from: ")
+	fmt.Println(addr)
 	fmt.Printf("%s\n", buffer)
 }
 

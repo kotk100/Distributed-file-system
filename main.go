@@ -4,6 +4,7 @@ import (
 	"./kademlia"
 	"fmt"
 	"os"
+	"runtime"
 )
 
 func main() {
@@ -29,7 +30,7 @@ func main() {
 	}
 
 	// Wait forever
-	for 0 == 0 {
-
+	for {
+		runtime.Gosched()
 	}
 }
