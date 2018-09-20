@@ -5,23 +5,31 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	log "github.com/sirupsen/logrus"
 )
+
+func init() {
+	// Log output
+  log.SetOutput(os.Stdout)
+	// Only log the warning severity or above.
+  //log.SetLevel(log.WarnLevel)
+}
 
 func main() {
 	//kademlia.Listen("10.0.0.1", 4658)
-	fmt.Println("Hello, World!")
+	log.Info("Hello, World!")
 
 	// Get bootstrap node address
 	// TODO if empty that means this is the bootstraping node
 	dns_name := os.Getenv("BOOTSTRAP_ADDR")
 	port := os.Getenv("LISTEN_PORT")
 
-	fmt.Println(dns_name)
-	fmt.Print("Port: ")
-	fmt.Println(port)
+	log.Info(dns_name)
+	log.Info("Port: ")
+	log.Info(port)
 
 	go kademlia.Listen(port)
-	fmt.Println("Started listening.")
+	log.Info("Started listening.")
 
 	if dns_name != "" {
 		var network kademlia.Network
