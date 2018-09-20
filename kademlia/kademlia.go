@@ -3,6 +3,8 @@ package kademlia
 type Kademlia struct {
 }
 
+var MyKademliaID *KademliaID
+
 func (kademlia *Kademlia) LookupContact(target *Contact) {
 	// TODO
 }

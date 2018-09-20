@@ -27,7 +27,7 @@ func NewKademliaID(data string) *KademliaID {
 func KademliaIDFromSlice(data []byte) *KademliaID {
 	id := &KademliaID{}
 
-	copy(id[:], data[0:19])
+	copy(id[:], data[0:20])
 
 	return id
 }

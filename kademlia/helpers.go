@@ -18,29 +18,38 @@ func createRoutine(fn rpcFunc, contact *Contact) {
 	c := make(chan *protocol.RPC)
 
 	// Generate random messageID
-	id := messageID{}
+	messageID := messageID{}
 	for i := 0; i < 20; i++ {
-		id[i] = uint8(rand.Intn(256))
+		messageID[i] = uint8(rand.Intn(256))
 	}
 
 	// Save (ID, channel) in map
-	m[id] = c
+	m[messageID] = c
+
+	log.WithFields(log.Fields{
+		"Map":       m,
+		"messageID": messageID,
+	}).Info("Creating a new routine.")
 
 	// Call function with channel
-	go fn(c, id, contact)
+	go fn(c, messageID, contact)
 }
 
 func sendMessageToRoutine(msg *protocol.RPC) {
 	// TODO what if message is not a response
 	// Read messageID from message
 	id := messageID{}
-	copy(id[:], msg.MessageID[0:19])
+	copy(id[:], msg.MessageID[0:20])
 
 	// Get channel
 	c := m[id]
 
 	// This RPC message is not a response, handle the request
 	if c == nil {
+		log.WithFields(log.Fields{
+			"ID": id,
+		}).Info("Recieved message is a request.")
+
 		switch msgType := msg.MessageType; msgType {
 		case protocol.RPC_PING:
 			answerPingRequest(msg)
@@ -60,6 +69,10 @@ func sendMessageToRoutine(msg *protocol.RPC) {
 			}).Error("Failed to parse incomming RPC message.")
 		}
 	} else {
+		log.WithFields(log.Fields{
+			"ID": id,
+		}).Info("Recieved message is a response to a request.")
+
 		// Write message to channel
 		c <- msg
 	}

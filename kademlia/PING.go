@@ -32,7 +32,7 @@ func xxx_sendAndRecievePing(ch chan *protocol.RPC, id messageID, contact *Contac
 		log.WithFields(log.Fields{
 			"contactSender": contactSender,
 			"contact":       contact,
-		}).Error("Ping response from wrong Node recieved.")
+		}).Error("Ping response from wrong Node recieved. Occurs when a new node joins the network.")
 	}
 
 	// TODO update routingTable
@@ -81,7 +81,7 @@ func answerPingRequest(msg *protocol.RPC) {
 
 	// Create message ID
 	id := messageID{}
-	copy(id[:], msg.MessageID[0:19])
+	copy(id[:], msg.MessageID[0:20])
 
 	// Send ping response
 	log.WithFields(log.Fields{

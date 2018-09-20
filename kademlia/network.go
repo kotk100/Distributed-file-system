@@ -5,6 +5,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	log "github.com/sirupsen/logrus"
 	"net"
+	"os"
 )
 
 type Network struct {
@@ -13,8 +14,6 @@ type Network struct {
 // TODO
 //TODO routing messages
 func handleIncomingMessage(buf []byte, addr *net.UDPAddr) {
-	log.Info("Recieved incoming message.")
-
 	// Parse incoming message
 	rpc := &protocol.RPC{}
 	if err := proto.Unmarshal(buf, rpc); err != nil {
@@ -23,8 +22,11 @@ func handleIncomingMessage(buf []byte, addr *net.UDPAddr) {
 		}).Error("Failed to parse incomming RPC message.")
 	}
 
-	// Update IP field and forward message to the right routine
-	rpc.IPaddress = addr.IP.String()
+	log.WithFields(log.Fields{
+		"RPC": rpc,
+	}).Info("Recieved incoming message.")
+
+	// Forward message to the right routine
 	sendMessageToRoutine(rpc)
 }
 
@@ -58,7 +60,6 @@ func Listen( /*ip string,*/ port string) {
 	// Listen for messages
 	for {
 		n, addr, err := conn.ReadFromUDP(buf)
-		handleIncomingMessage(buf[0:n], addr)
 
 		if err != nil {
 			log.WithFields(log.Fields{
@@ -67,7 +68,29 @@ func Listen( /*ip string,*/ port string) {
 				"Address": addr,
 			}).Error("Failed to recieve a message.")
 		}
+
+		handleIncomingMessage(buf[0:n], addr)
 	}
+}
+
+// TODO save result and return that
+func getLocalIPAddress() string {
+	addrs, err := net.InterfaceAddrs()
+	// TODO use logrus
+	if err != nil {
+		os.Stderr.WriteString("Oops: " + err.Error() + "\n")
+		os.Exit(1)
+	}
+
+	for _, a := range addrs {
+		if ipnet, ok := a.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+			if ipnet.IP.To4() != nil {
+				return ipnet.IP.String()
+			}
+		}
+	}
+
+	return ""
 }
 
 // Create RPC message wrapper and return bytes to send
@@ -76,6 +99,7 @@ func (network *Network) GetRPCMessage(message []byte, messageType protocol.RPCMe
 	rpc.MessageType = messageType
 	rpc.MessageID = messageID
 	rpc.Message = message
+	rpc.IPaddress = getLocalIPAddress()
 
 	out, err := proto.Marshal(rpc)
 
@@ -89,7 +113,7 @@ func (network *Network) GetRPCMessage(message []byte, messageType protocol.RPCMe
 }
 
 // Send ping message to another node
-func (network *Network) SendPingMessage(contact *Contact, id messageID) {
+func (network *Network) SendPingMessage(contact *Contact, messageID messageID) {
 	// Open connection
 	conn, err := net.Dial("udp", contact.Address)
 	if err != nil {
@@ -102,7 +126,7 @@ func (network *Network) SendPingMessage(contact *Contact, id messageID) {
 	// Create ping message
 	// TODO use correct ID
 	ping := &protocol.Ping{}
-	ping.KademliaID = NewRandomKademliaID()[:]
+	ping.KademliaID = MyKademliaID[:]
 	out, err := proto.Marshal(ping)
 
 	if err != nil {
@@ -113,7 +137,7 @@ func (network *Network) SendPingMessage(contact *Contact, id messageID) {
 
 	//TODO Message ID generation
 	// Wrap ping message and get bytes to send
-	message := network.GetRPCMessage(out, protocol.RPC_PING, id[:])
+	message := network.GetRPCMessage(out, protocol.RPC_PING, messageID[:])
 
 	// Write message to the connection (send to other node)
 	n, err := conn.Write(message)

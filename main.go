@@ -28,6 +28,9 @@ func main() {
 	log.Info("Port: ")
 	log.Info(port)
 
+	// Generate ID for this node
+	kademlia.MyKademliaID = kademlia.NewRandomKademliaID()
+
 	go kademlia.Listen(port)
 	log.Info("Started listening.")
 
