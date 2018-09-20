@@ -15,3 +15,6 @@ docker build -t test/dfs -f "./Docker files/Dockerfile" .
 
 To check joined nodes run `docker node ls`.
 Run further commands on the first PC (Swarm manager).
+
+## Compiling ProtoBuf files
+`protoc --proto_path="Protocol files/" --go_out="kademlia/protocol/" "<file>.proto"`

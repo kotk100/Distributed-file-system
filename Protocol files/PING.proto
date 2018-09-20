@@ -1,0 +1,8 @@
+syntax = "proto3";
+package protocol;
+
+//import "RPC.proto";
+
+message Ping {
+    bytes KademliaID = 1;
+}

@@ -3,16 +3,16 @@ package main
 import (
 	"./kademlia"
 	"fmt"
+	log "github.com/sirupsen/logrus"
 	"os"
 	"runtime"
-	log "github.com/sirupsen/logrus"
 )
 
 func init() {
 	// Log output
-  log.SetOutput(os.Stdout)
+	log.SetOutput(os.Stdout)
 	// Only log the warning severity or above.
-  //log.SetLevel(log.WarnLevel)
+	//log.SetLevel(log.WarnLevel)
 }
 
 func main() {
@@ -33,7 +33,10 @@ func main() {
 
 	if dns_name != "" {
 		var network kademlia.Network
-		network.SendPingMessageTMP(dns_name)
+		contact := &kademlia.Contact{}
+		contact.Address = dns_name
+
+		network.SendPingMessage(contact)
 		fmt.Println("Message sent.")
 	}
 

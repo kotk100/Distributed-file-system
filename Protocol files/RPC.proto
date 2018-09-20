@@ -1,0 +1,22 @@
+syntax = "proto3";
+package protocol;
+
+
+message RPC {
+    // Unique 160-bit message ID used for routing purposes
+    bytes messageID = 1;
+
+    // Specifies the message type contained in message
+    enum messageTYPE {
+        PING = 0;
+        STORE = 1;
+        FIND_NODE = 2;
+        FIND_VALUE = 3;
+        PIN = 4;
+        UNPIN = 5;
+    }
+    messageTYPE messageType = 2;
+
+    // Contains the serialized message
+    bytes message = 3;
+}

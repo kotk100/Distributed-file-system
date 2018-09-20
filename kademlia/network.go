@@ -1,71 +1,132 @@
 package kademlia
 
 import (
-	"fmt"
+	"./protocol"
+	"github.com/golang/protobuf/proto"
+	log "github.com/sirupsen/logrus"
 	"net"
 )
 
 type Network struct {
 }
 
-// Open read/write connection to given Contact
-// TODO add error handling, close connection
-func OpenConnection(contact *Contact) net.Conn {
-	conn, err := net.Dial("udp", contact.Address)
-	if err != nil {
-		fmt.Println(err)
+// TODO
+//TODO routing messages
+func handleIncomingMessage(buf []byte, addr *net.UDPAddr){
+	log.Info("Recieved incoming message.")
+
+	// Parse incoming message
+	rpc := &protocol.RPC{}
+	if err := proto.Unmarshal(buf, rpc); err != nil {
+		log.WithFields(log.Fields{
+			"Error": err,
+		}).Error("Failed to parse incomming RPC message.")
 	}
-	return conn
+
+	// Forward message to the right routine
+	sendMessageToRoutine(rpc)
 }
 
-func handleConnection() {
+//TODO parse message
+func parseMessage(buf []byte){
 
 }
 
 func Listen( /*ip string,*/ port string) {
-	fmt.Println("Entered function Listen.")
-	// TODO read port from ENV
-	ln, err := net.ListenPacket("udp", port)
+	// Prepare an address at any interface at port 10001*/
+	addr, err := net.ResolveUDPAddr("udp", port)
 	if err != nil {
-		//TODO handle error
-		fmt.Println(err)
+		log.WithFields(log.Fields{
+			"Error": err,
+		}).Error("Failed to prepare UDP port.")
 	}
-	buffer := make([]byte, 1024)
-	fmt.Println("Waiting for message.")
-	n, addr, err := ln.ReadFrom(buffer)
+
+	// Listen at selected port
+	conn, err := net.ListenUDP("udp", addr)
 	if err != nil {
-		//TODO handle error
-		fmt.Println(n)
-		fmt.Println(err)
+		log.WithFields(log.Fields{
+			"Error": err,
+			"UDP port": port,
+		}).Error("Failed to start listening on UDP port.")
 	}
-	fmt.Print("Message recieved from: ")
-	fmt.Println(addr)
-	fmt.Printf("%s\n", buffer)
+	defer conn.Close()
+
+	// TODO size of buffer
+	buf := make([]byte, 2048)
+
+	// Listen for messages
+	for {
+		n,addr,err := conn.ReadFromUDP(buf)
+		handleIncomingMessage(buf[0:n], addr)
+
+		if err != nil {
+			log.WithFields(log.Fields{
+				"Error": err,
+				"Bytes": n,
+				"Address": addr,
+			}).Error("Failed to recieve a message.")
+		}
+	}
 }
 
-// TODO delete
-func (network *Network) SendPingMessageTMP(addr string) {
-	conn, err := net.Dial("udp", addr)
+// Create RPC message wrapper and return bytes to send
+func (network *Network) GetRPCMessage(message []byte, messageType protocol.RPCMessageTYPE, messageID []byte)(output []byte){
+	rpc := &protocol.RPC{}
+	rpc.MessageType = messageType
+	rpc.MessageID = messageID
+	rpc.Message = message
+
+	out, err := proto.Marshal(rpc)
+
 	if err != nil {
-		fmt.Println(err)
+		log.WithFields(log.Fields{
+			"Error": err,
+		}).Error("Failed to encode RPC message:")
 	}
 
-	n, err := conn.Write([]byte("Hello from Node"))
-	if err != nil {
-		fmt.Print(n)
-		fmt.Print("bytes   ")
-		fmt.Println(err)
-	}
-	fmt.Println("Message writen to conn.")
-	conn.Close()
+	return out
 }
 
-func (network *Network) SendPingMessage(contact *Contact) {
-	conn := OpenConnection(contact)
-	conn.Write([]byte("Hello from Node"))
-	conn.Close()
+// Send ping message to another node
+func (network *Network) SendPingMessage(contact *Contact, id messageID) {
+	// Open connection
+	conn, err := net.Dial("udp", contact.Address)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"Error": err,
+			"Contact": contact,
+		}).Error("Failed to dial UDP address.")
+	}
 
-	// TODO close connection, error handling
+	// Create ping message
+	// TODO use correct ID
+	ping := &protocol.Ping{}
+	ping.KademliaID = NewRandomKademliaID()[:]
+	out, err := proto.Marshal(ping)
+
+	if err != nil {
+		log.WithFields(log.Fields{
+			"Error": err,
+		}).Error("Failed to encode PING message:")
+	}
+
+	//TODO Message ID generation
+	// Wrap ping message and get bytes to send
+	message := network.GetRPCMessage(out, protocol.RPC_PING, id[:])
+
+	// Write message to the connection (send to other node)
+	n, err := conn.Write(message)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"Error": err,
+			"Number of bytes": n,
+		}).Error("Failed to write message to connection.")
+	} else {
+		log.Info("Message writen to conn.")
+	}
+
+	// Close connection
+	conn.Close()
 }
 
 func (network *Network) SendFindContactMessage(contact *Contact) {
