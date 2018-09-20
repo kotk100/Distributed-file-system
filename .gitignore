@@ -13,3 +13,5 @@
 
 # Output directory
 Output/*
+
+.idea/*
