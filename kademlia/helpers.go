@@ -2,14 +2,9 @@ package kademlia
 
 import (
 	"./protocol"
-	"fmt"
 	log "github.com/sirupsen/logrus"
 	"math/rand"
-	"runtime"
 )
-
-type Helper struct {
-}
 
 type rpcFunc func(chan *protocol.RPC, messageID, *Contact)
 type messageID [20]byte
@@ -17,7 +12,8 @@ type messageID [20]byte
 var m = make(map[messageID]chan *protocol.RPC)
 
 // Create a routine for the provided function and a way to send message responses back to it
-func (helper *Helper) createRoutine(fn rpcFunc, contact *Contact){
+// TODO logging
+func createRoutine(fn rpcFunc, contact *Contact) {
 	// Create channel for sending RPC responses
 	c := make(chan *protocol.RPC)
 
@@ -34,7 +30,7 @@ func (helper *Helper) createRoutine(fn rpcFunc, contact *Contact){
 	go fn(c, id, contact)
 }
 
-func (helper *Helper) sendMessageToRoutine(msg *protocol.RPC){
+func sendMessageToRoutine(msg *protocol.RPC) {
 	// TODO what if message is not a response
 	// Read messageID from message
 	var id messageID
@@ -47,12 +43,20 @@ func (helper *Helper) sendMessageToRoutine(msg *protocol.RPC){
 	if c == nil {
 		switch msgType := msg.MessageType; msgType {
 		case protocol.RPC_PING:
-			ping.answerPingRequest()
+			answerPingRequest()
 		case protocol.RPC_STORE:
-
+			//TODO
+		case protocol.RPC_FIND_NODE:
+			//TODO
+		case protocol.RPC_FIND_VALUE:
+			//TODO
+		case protocol.RPC_PIN:
+			//TODO
+		case protocol.RPC_UNPIN:
+			//TODO
 		default:
 			log.WithFields(log.Fields{
-				"Error": err,
+				"Message": msg,
 			}).Error("Failed to parse incomming RPC message.")
 		}
 	}
@@ -60,13 +64,3 @@ func (helper *Helper) sendMessageToRoutine(msg *protocol.RPC){
 	// Write message to channel
 	c <- msg
 }
-
-func sendAndRecievePing(c chan *protocol.RPC, id messageID, contact *Contact){
-	var network Network
-
-	network.SendPingMessage(contact, id);
-	fmt.Println("Message sent.")
-
-	// TODO recieve response message through channel
-}
-
