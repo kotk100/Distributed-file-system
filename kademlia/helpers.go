@@ -33,8 +33,8 @@ func createRoutine(fn rpcFunc, contact *Contact) {
 func sendMessageToRoutine(msg *protocol.RPC) {
 	// TODO what if message is not a response
 	// Read messageID from message
-	var id messageID
-	copy(id[:], msg.MessageID[0:20])
+	id := messageID{}
+	copy(id[:], msg.MessageID[0:19])
 
 	// Get channel
 	c := m[id]
@@ -43,7 +43,7 @@ func sendMessageToRoutine(msg *protocol.RPC) {
 	if c == nil {
 		switch msgType := msg.MessageType; msgType {
 		case protocol.RPC_PING:
-			answerPingRequest()
+			answerPingRequest(msg)
 		case protocol.RPC_STORE:
 			//TODO
 		case protocol.RPC_FIND_NODE:
@@ -59,8 +59,8 @@ func sendMessageToRoutine(msg *protocol.RPC) {
 				"Message": msg,
 			}).Error("Failed to parse incomming RPC message.")
 		}
+	} else {
+		// Write message to channel
+		c <- msg
 	}
-
-	// Write message to channel
-	c <- msg
 }

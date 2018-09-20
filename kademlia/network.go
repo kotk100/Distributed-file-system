@@ -12,7 +12,7 @@ type Network struct {
 
 // TODO
 //TODO routing messages
-func handleIncomingMessage(buf []byte, addr *net.UDPAddr){
+func handleIncomingMessage(buf []byte, addr *net.UDPAddr) {
 	log.Info("Recieved incoming message.")
 
 	// Parse incoming message
@@ -23,12 +23,13 @@ func handleIncomingMessage(buf []byte, addr *net.UDPAddr){
 		}).Error("Failed to parse incomming RPC message.")
 	}
 
-	// Forward message to the right routine
+	// Update IP field and forward message to the right routine
+	rpc.IPaddress = addr.IP.String()
 	sendMessageToRoutine(rpc)
 }
 
 //TODO parse message
-func parseMessage(buf []byte){
+func parseMessage(buf []byte) {
 
 }
 
@@ -45,7 +46,7 @@ func Listen( /*ip string,*/ port string) {
 	conn, err := net.ListenUDP("udp", addr)
 	if err != nil {
 		log.WithFields(log.Fields{
-			"Error": err,
+			"Error":    err,
 			"UDP port": port,
 		}).Error("Failed to start listening on UDP port.")
 	}
@@ -56,13 +57,13 @@ func Listen( /*ip string,*/ port string) {
 
 	// Listen for messages
 	for {
-		n,addr,err := conn.ReadFromUDP(buf)
+		n, addr, err := conn.ReadFromUDP(buf)
 		handleIncomingMessage(buf[0:n], addr)
 
 		if err != nil {
 			log.WithFields(log.Fields{
-				"Error": err,
-				"Bytes": n,
+				"Error":   err,
+				"Bytes":   n,
 				"Address": addr,
 			}).Error("Failed to recieve a message.")
 		}
@@ -70,7 +71,7 @@ func Listen( /*ip string,*/ port string) {
 }
 
 // Create RPC message wrapper and return bytes to send
-func (network *Network) GetRPCMessage(message []byte, messageType protocol.RPCMessageTYPE, messageID []byte)(output []byte){
+func (network *Network) GetRPCMessage(message []byte, messageType protocol.RPCMessageTYPE, messageID []byte) (output []byte) {
 	rpc := &protocol.RPC{}
 	rpc.MessageType = messageType
 	rpc.MessageID = messageID
@@ -93,7 +94,7 @@ func (network *Network) SendPingMessage(contact *Contact, id messageID) {
 	conn, err := net.Dial("udp", contact.Address)
 	if err != nil {
 		log.WithFields(log.Fields{
-			"Error": err,
+			"Error":   err,
 			"Contact": contact,
 		}).Error("Failed to dial UDP address.")
 	}
@@ -118,7 +119,7 @@ func (network *Network) SendPingMessage(contact *Contact, id messageID) {
 	n, err := conn.Write(message)
 	if err != nil {
 		log.WithFields(log.Fields{
-			"Error": err,
+			"Error":           err,
 			"Number of bytes": n,
 		}).Error("Failed to write message to connection.")
 	} else {

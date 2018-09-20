@@ -23,6 +23,15 @@ func NewKademliaID(data string) *KademliaID {
 	return &newKademliaID
 }
 
+// NewKademliaID returns a new instance of a KademliaID based on the string input
+func KademliaIDFromSlice(data []byte) *KademliaID {
+	id := &KademliaID{}
+
+	copy(id[:], data[0:19])
+
+	return id
+}
+
 // NewRandomKademliaID returns a new instance of a random KademliaID,
 // change this to a better version if you like
 func NewRandomKademliaID() *KademliaID {

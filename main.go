@@ -32,11 +32,10 @@ func main() {
 	log.Info("Started listening.")
 
 	if dns_name != "" {
-		var network kademlia.Network
 		contact := &kademlia.Contact{}
 		contact.Address = dns_name
 
-		network.SendPingMessage(contact)
+		kademlia.SendAndRecievePing(contact)
 		fmt.Println("Message sent.")
 	}
 
