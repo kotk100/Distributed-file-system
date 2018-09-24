@@ -8,12 +8,14 @@ import (
 	"runtime"
 )
 
+
 func init() {
 	// Log output
 	log.SetOutput(os.Stdout)
 	// Only log the warning severity or above.
 	//log.SetLevel(log.WarnLevel)
 }
+
 
 func main() {
 	//kademlia.Listen("10.0.0.1", 4658)
@@ -24,12 +26,9 @@ func main() {
 	dns_name := os.Getenv("BOOTSTRAP_ADDR")
 	port := os.Getenv("LISTEN_PORT")
 
-	log.Info(dns_name)
-	log.Info("Port: ")
-	log.Info(port)
+	kademlia.InitMyInformation(port)
 
-	// Generate ID for this node
-	kademlia.MyKademliaID = kademlia.NewRandomKademliaID()
+	log.Info(dns_name)
 
 	go kademlia.Listen(port)
 	log.Info("Started listening.")

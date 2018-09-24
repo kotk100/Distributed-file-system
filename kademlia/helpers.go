@@ -35,17 +35,30 @@ func createRoutine(fn rpcFunc, contact *Contact) {
 	go fn(c, messageID, contact)
 }
 
+
+func destroyRoutine(id messageID){
+	delete(m, id)
+}
+
 func sendMessageToRoutine(msg *protocol.RPC) {
 	// TODO what if message is not a response
 	// Read messageID from message
 	id := messageID{}
 	copy(id[:], msg.MessageID[0:20])
-
-	// Get channel
-	c := m[id]
+	originalSender :=KademliaIDFromSlice(msg.OriginalSender)
 
 	// This RPC message is not a response, handle the request
-	if c == nil {
+	if MyRoutingTable.me.ID.Equals(originalSender) {
+		log.WithFields(log.Fields{
+			"ID": id,
+		}).Info("Recieved message is a response to a request.")
+		// Get channel
+		c := m[id]
+		if c!=nil {
+			// Write message to channel
+			c <- msg
+		}
+	}else{
 		log.WithFields(log.Fields{
 			"ID": id,
 		}).Info("Recieved message is a request.")
@@ -68,12 +81,5 @@ func sendMessageToRoutine(msg *protocol.RPC) {
 				"Message": msg,
 			}).Error("Failed to parse incomming RPC message.")
 		}
-	} else {
-		log.WithFields(log.Fields{
-			"ID": id,
-		}).Info("Recieved message is a response to a request.")
-
-		// Write message to channel
-		c <- msg
 	}
 }

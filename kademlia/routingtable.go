@@ -2,6 +2,8 @@ package kademlia
 
 const bucketSize = 20
 
+var MyRoutingTable *RoutingTable
+
 // RoutingTable definition
 // keeps a refrence contact of me and an array of buckets
 type RoutingTable struct {
@@ -23,7 +25,7 @@ func NewRoutingTable(me Contact) *RoutingTable {
 func (routingTable *RoutingTable) AddContact(contact Contact) {
 	bucketIndex := routingTable.getBucketIndex(contact.ID)
 	bucket := routingTable.buckets[bucketIndex]
-	bucket.AddContact(contact)
+	go bucket.AddContact(contact)
 }
 
 // FindClosestContacts finds the count closest Contacts to the target in the RoutingTable
@@ -66,4 +68,8 @@ func (routingTable *RoutingTable) getBucketIndex(id *KademliaID) int {
 	}
 
 	return IDLength*8 - 1
+}
+
+func (routingTable *RoutingTable) GetMe() Contact{
+	return routingTable.me
 }

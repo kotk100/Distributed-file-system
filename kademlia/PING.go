@@ -4,7 +4,6 @@ import (
 	"./protocol"
 	"github.com/golang/protobuf/proto"
 	log "github.com/sirupsen/logrus"
-	"os"
 )
 
 func SendAndRecievePing(contact *Contact) {
@@ -15,30 +14,34 @@ func SendAndRecievePing(contact *Contact) {
 	createRoutine(xxx_sendAndRecievePing, contact)
 }
 
+
 func xxx_sendAndRecievePing(ch chan *protocol.RPC, id messageID, contact *Contact) {
 	// Send ping message to other node
 	var network Network
-	network.SendPingMessage(contact, id)
+	error := network.SendPingMessage(MyRoutingTable.me.ID,contact, id)
 
-	// Recieve response message through channel
-	rpc := <-ch
-	log.Info("Received PING message response.")
+	//if the channel return nil then there was error
+	if error {
+		log.Info("Error to send ping.")
+		destroyRoutine(id)
+	}else{
+		// Recieve response message through channel
+		rpc := <-ch
+		log.Info("Received PING message response.")
 
-	// Parse ping message and create contact
-	ping := parsePingRPC(rpc)
-	contactSender := createContactFromPing(ping, rpc)
+		// Parse ping message and create contact
+		ping := parsePingRPC(rpc)
+		contactSender := createContactFromPing(ping, rpc)
 
-	if contactSender.ID != contact.ID {
-		log.WithFields(log.Fields{
-			"contactSender": contactSender,
-			"contact":       contact,
-		}).Error("Ping response from wrong Node recieved. Occurs when a new node joins the network.")
+		if contactSender.ID != contact.ID {
+			log.WithFields(log.Fields{
+				"contactSender": contactSender,
+				"contact":       contact,
+			}).Error("Ping response from wrong Node recieved. Occurs when a new node joins the network.")
+		}
+
+		MyRoutingTable.AddContact(*contactSender)
 	}
-
-	// TODO update routingTable
-	log.WithFields(log.Fields{
-		"Contact": contact,
-	}).Info("Updating routing table because of PING response.")
 }
 
 // Parse message inside RPC
@@ -63,12 +66,10 @@ func parsePingRPC(rpc *protocol.RPC) *protocol.Ping {
 }
 
 func createContactFromPing(ping *protocol.Ping, rpc *protocol.RPC) *Contact {
-	// Read the port number nodes are listening on
-	port := os.Getenv("LISTEN_PORT")
 
 	// Create contact
 	contact := &Contact{}
-	contact.Address = rpc.IPaddress + port
+	contact.Address = rpc.IPaddress
 	contact.ID = KademliaIDFromSlice(ping.KademliaID)
 
 	return contact
@@ -89,10 +90,8 @@ func answerPingRequest(msg *protocol.RPC) {
 		"MessageID": id,
 	}).Info("Sending PING response message.")
 	net := &Network{}
-	net.SendPingMessage(contact, id)
+	originalSender :=KademliaIDFromSlice(msg.OriginalSender)
+	net.SendPingMessage(originalSender,contact, id)
 
-	// TODO ADD contact to routing table
-	log.WithFields(log.Fields{
-		"Contact": contact,
-	}).Info("Updating routing table because of PING response.")
+	MyRoutingTable.AddContact(*contact)
 }

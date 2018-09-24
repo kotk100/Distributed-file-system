@@ -5,8 +5,11 @@ import (
 	"github.com/golang/protobuf/proto"
 	log "github.com/sirupsen/logrus"
 	"net"
-	"os"
 )
+
+type NetworkAPI interface {
+	SendPingMessage(originalSender *KademliaID,contact *Contact, messageID messageID) bool
+}
 
 type Network struct {
 }
@@ -73,33 +76,14 @@ func Listen( /*ip string,*/ port string) {
 	}
 }
 
-// TODO save result and return that
-func getLocalIPAddress() string {
-	addrs, err := net.InterfaceAddrs()
-	// TODO use logrus
-	if err != nil {
-		os.Stderr.WriteString("Oops: " + err.Error() + "\n")
-		os.Exit(1)
-	}
-
-	for _, a := range addrs {
-		if ipnet, ok := a.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
-			if ipnet.IP.To4() != nil {
-				return ipnet.IP.String()
-			}
-		}
-	}
-
-	return ""
-}
-
 // Create RPC message wrapper and return bytes to send
-func (network *Network) GetRPCMessage(message []byte, messageType protocol.RPCMessageTYPE, messageID []byte) (output []byte) {
+func (network *Network) GetRPCMessage(message []byte, messageType protocol.RPCMessageTYPE, messageID []byte, originalSender []byte) (output []byte) {
 	rpc := &protocol.RPC{}
 	rpc.MessageType = messageType
 	rpc.MessageID = messageID
 	rpc.Message = message
-	rpc.IPaddress = getLocalIPAddress()
+	rpc.IPaddress = MyRoutingTable.me.Address
+	rpc.OriginalSender = originalSender
 
 	out, err := proto.Marshal(rpc)
 
@@ -113,45 +97,48 @@ func (network *Network) GetRPCMessage(message []byte, messageType protocol.RPCMe
 }
 
 // Send ping message to another node
-func (network *Network) SendPingMessage(contact *Contact, messageID messageID) {
+//if error false is return
+func (network *Network) SendPingMessage(originalSender *KademliaID,contact *Contact, messageID messageID) bool {
 	// Open connection
 	conn, err := net.Dial("udp", contact.Address)
+	error := false
 	if err != nil {
 		log.WithFields(log.Fields{
 			"Error":   err,
 			"Contact": contact,
 		}).Error("Failed to dial UDP address.")
+		error=true
+	}else{
+		// Create ping message
+		// TODO use correct ID
+		ping := &protocol.Ping{}
+		ping.KademliaID = MyRoutingTable.me.ID[:]
+		out, err := proto.Marshal(ping)
+		if err != nil {
+			log.WithFields(log.Fields{
+				"Error": err,
+			}).Error("Failed to encode PING message:")
+			error=true
+		}else{
+			//TODO Message ID generation
+			// Wrap ping message and get bytes to send
+			message := network.GetRPCMessage(out, protocol.RPC_PING, messageID[:],originalSender[:])
+			// Write message to the connection (send to other node)
+			n, err := conn.Write(message)
+			if err != nil {
+				log.WithFields(log.Fields{
+					"Error":           err,
+					"Number of bytes": n,
+				}).Error("Failed to write message to connection.")
+				error=true
+			} else {
+				log.Info("Message writen to conn.")
+			}
+		}
 	}
-
-	// Create ping message
-	// TODO use correct ID
-	ping := &protocol.Ping{}
-	ping.KademliaID = MyKademliaID[:]
-	out, err := proto.Marshal(ping)
-
-	if err != nil {
-		log.WithFields(log.Fields{
-			"Error": err,
-		}).Error("Failed to encode PING message:")
-	}
-
-	//TODO Message ID generation
-	// Wrap ping message and get bytes to send
-	message := network.GetRPCMessage(out, protocol.RPC_PING, messageID[:])
-
-	// Write message to the connection (send to other node)
-	n, err := conn.Write(message)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"Error":           err,
-			"Number of bytes": n,
-		}).Error("Failed to write message to connection.")
-	} else {
-		log.Info("Message writen to conn.")
-	}
-
 	// Close connection
 	conn.Close()
+	return error
 }
 
 func (network *Network) SendFindContactMessage(contact *Contact) {

@@ -19,6 +19,8 @@ message RPC {
 
     // Contains the serialized message
     bytes message = 3;
+
     string IPaddress = 4;
 
+    bytes originalSender = 5;
 }
