@@ -59,6 +59,8 @@ func answerFindNodeRequest(msg *protocol.RPC) {
 	originalSender :=KademliaIDFromSlice(msg.OriginalSender)
 
 	net.SendFindContactMessage(targetId,originalSender,sender,contacts,id)
+
+	MyRoutingTable.AddContact(*sender)
 }
 
 
