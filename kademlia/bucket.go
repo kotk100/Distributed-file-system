@@ -1,10 +1,9 @@
 package kademlia
 
 import (
-	"./protocol"
 	"container/list"
-	"sync"
 	log "github.com/sirupsen/logrus"
+	"sync"
 )
 
 // bucket definition
@@ -47,51 +46,14 @@ func (bucket *bucket) AddContact(contact Contact) {
 		} else{
 			bucket.contactToInsert = contact
 			contact:=bucket.list.Back().Value.(Contact)
-			createRoutine(bucket.xxx_sendAndReceiveCheckBucketPing,&contact )
+			pingBucketRequestExecutor:= PingBucketRequestExecutor{}
+			pingBucketRequestExecutor.contact = &contact
+			pingBucketRequestExecutor.bucket = bucket
+			createRoutine(&pingBucketRequestExecutor)
 		}
 	} else {
 		bucket.list.MoveToFront(element)
 		bucket.mux.Unlock()
-	}
-}
-
-func (bucket *bucket) xxx_sendAndReceiveCheckBucketPing(ch chan *protocol.RPC, id messageID, contact *Contact){
-	// Send ping message to other node
-	error := bucket.networkAPI.SendPingMessage(MyRoutingTable.me.ID,contact, id)
-
-	var element *list.Element
-	for e := bucket.list.Front(); e != nil; e = e.Next() {
-		nodeID := e.Value.(Contact).ID
-
-		if (contact).ID.Equals(nodeID) {
-			element = e
-		}
-	}
-	// Receive response message through channel
-	if error {
-		log.Info("Error to send bucket ping.")
-		bucket.list.Remove(element)
-		bucket.list.PushFront(bucket.contactToInsert)
-		bucket.mux.Unlock()
-		destroyRoutine(id)
-	}else{
-		timeout:=NewTimeout(id,ch)
-		timeOutManager.insertAndStart(timeout)
-		rpc := <-ch
-		timeOutManager.tryGetAndRemoveTimeOut(id)
-		//timeout
-		if element !=nil{
-			if rpc == nil{
-				log.Info("PING bucket time out.")
-				bucket.list.Remove(element)
-				bucket.list.PushFront(bucket.contactToInsert)
-			} else{
-				log.Info("Received PING bucket message response.")
-				bucket.list.MoveToFront(element)
-			}
-		}
-		bucket.mux.Unlock()
-		destroyRoutine(id)
 	}
 }
 

@@ -141,8 +141,39 @@ func (network *Network) SendPingMessage(originalSender *KademliaID,contact *Cont
 	return error
 }
 
-func (network *Network) SendFindContactMessage(contact *Contact) {
-	// TODO
+func (network *Network) SendFindContactMessage(targetId *KademliaID,originalSender *KademliaID,contact *Contact,contacts []Contact, messageID messageID) bool {
+	// Open connection
+	conn, err := net.Dial("udp", contact.Address)
+	error := false
+	if err != nil {
+		log.WithFields(log.Fields{
+			"Error":   err,
+			"Contact": contact,
+		}).Error("Failed to dial UDP address.")
+		error=true
+	} else{
+		out, err := createFindNodeToByte(targetId,contacts)
+		if err != nil {
+			log.WithFields(log.Fields{
+				"Error": err,
+			}).Error("Failed to encode FindNode message:")
+			error=true
+		}else{
+			message := network.GetRPCMessage(out, protocol.RPC_FIND_NODE, messageID[:],originalSender[:])
+			n, err := conn.Write(message)
+			if err != nil {
+				log.WithFields(log.Fields{
+					"Error":           err,
+					"Number of bytes": n,
+				}).Error("Failed to write message to connection.")
+				error=true
+			} else {
+				log.Info("Message writen to conn.")
+			}
+		}
+	}
+
+	return error
 }
 
 func (network *Network) SendFindDataMessage(hash string) {

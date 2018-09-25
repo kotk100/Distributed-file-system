@@ -101,7 +101,13 @@ func TestInsertContactWhenBucketIsFullAndOldestContactTimeOut(t *testing.T){
 
 	bucket.contactToInsert = contactToInsert
 	bucket.mux.Lock()
-	go bucket.xxx_sendAndReceiveCheckBucketPing(ch , messageID, &oldestContact)
+
+	pingBucketRequestExecutor:= PingBucketRequestExecutor{}
+	pingBucketRequestExecutor.contact = &oldestContact
+	pingBucketRequestExecutor.bucket = bucket
+	pingBucketRequestExecutor.id = messageID
+	pingBucketRequestExecutor.ch=ch
+	go pingBucketRequestExecutor.execute()
 
 	time.Sleep(11 * time.Second)
 
@@ -132,7 +138,12 @@ func TestInsertContactWhenBucketIsFullAndErrorToSendPing(t *testing.T){
 
 	bucket.contactToInsert = contactToInsert
 	bucket.mux.Lock()
-	go bucket.xxx_sendAndReceiveCheckBucketPing(ch , messageID, &oldestContact)
+	pingBucketRequestExecutor:= PingBucketRequestExecutor{}
+	pingBucketRequestExecutor.contact = &oldestContact
+	pingBucketRequestExecutor.bucket = bucket
+	pingBucketRequestExecutor.id = messageID
+	pingBucketRequestExecutor.ch=ch
+	go pingBucketRequestExecutor.execute()
 
 	time.Sleep(2 * time.Second)
 
@@ -162,7 +173,12 @@ func TestInsertContactWhenBucketIsFullAndOldestContactAnswer(t *testing.T){
 	bucket.networkAPI = testObj
 
 	bucket.mux.Lock()
-	go bucket.xxx_sendAndReceiveCheckBucketPing(ch , messageID, &oldestContact)
+	pingBucketRequestExecutor:= PingBucketRequestExecutor{}
+	pingBucketRequestExecutor.contact = &oldestContact
+	pingBucketRequestExecutor.bucket = bucket
+	pingBucketRequestExecutor.id = messageID
+	pingBucketRequestExecutor.ch=ch
+	go pingBucketRequestExecutor.execute()
 
 	ch <-&protocol.RPC{}
 	time.Sleep(2 * time.Second)

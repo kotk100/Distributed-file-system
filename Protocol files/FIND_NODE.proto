@@ -1,0 +1,16 @@
+syntax = "proto3";
+package protocol;
+
+message FindNode {
+
+    message Contact{
+         string IPaddress = 1;
+         bytes kademliaID = 2;
+    }
+
+    repeated Contact contacts = 1;
+
+    bytes targetID = 2;
+
+    bytes KademliaID = 3;
+}

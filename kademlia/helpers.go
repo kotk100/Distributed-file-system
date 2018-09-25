@@ -13,7 +13,7 @@ var m = make(map[messageID]chan *protocol.RPC)
 
 // Create a routine for the provided function and a way to send message responses back to it
 // TODO logging
-func createRoutine(fn rpcFunc, contact *Contact) {
+func createRoutine(executor RequestExecutor) {
 	// Create channel for sending RPC responses
 	c := make(chan *protocol.RPC)
 
@@ -31,8 +31,10 @@ func createRoutine(fn rpcFunc, contact *Contact) {
 		"messageID": messageID,
 	}).Info("Creating a new routine.")
 
+	executor.setChannel(c)
+	executor.setMessageId(messageID)
 	// Call function with channel
-	go fn(c, messageID, contact)
+	go executor.execute()
 }
 
 
@@ -69,7 +71,7 @@ func sendMessageToRoutine(msg *protocol.RPC) {
 		case protocol.RPC_STORE:
 			//TODO
 		case protocol.RPC_FIND_NODE:
-			//TODO
+			answerFindNodeRequest(msg)
 		case protocol.RPC_FIND_VALUE:
 			//TODO
 		case protocol.RPC_PIN:
