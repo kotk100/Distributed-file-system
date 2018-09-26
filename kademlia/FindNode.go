@@ -7,13 +7,14 @@ import (
 
 )
 
-func SendAndReceiveFindNode(target *KademliaID,contact *Contact) {
+func SendAndReceiveFindNode(callback FindNodeRequestCallback,target *KademliaID,contact *Contact) {
 	log.WithFields(log.Fields{
 		"Contact": contact,
 	}).Info("Sending FindNode message to node.")
 	findNodeRequestExecutor := FindNodeRequestExecutor{}
 	findNodeRequestExecutor.contact = contact
 	findNodeRequestExecutor.target = target
+	findNodeRequestExecutor.callback = callback
 	createRoutine(&findNodeRequestExecutor)
 }
 
