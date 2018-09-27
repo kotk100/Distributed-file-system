@@ -185,3 +185,14 @@ func TestUpdateMiddleContactShortList(t *testing.T){
 	assert.Equal(t,20, len(lookup.shortlist), "Size should be 20")
 	assert.Equal(t,newContact.ID, lookup.shortlist[18].contact.ID, "Should have same ID")
 }
+
+func TestCleanShortList(t *testing.T){
+	target:=NewContact(NewKademliaID("1111111111000000000000000000000000000000"), "localhost:8000")
+	lookup := NewLookupNode(target)
+	fillShortList(lookup)
+	contact:=lookup.shortlist[3]
+	lookup.errorRequest(contact.contact)
+	lookup.changeLookupNodeContactState(&contact,ASKING)
+	assert.Equal(t,19, len(lookup.shortlist), "Size should be 20")
+	assert.Equal(t,false, lookup.contactIsInShortlist(&contact.contact), "Contact should be removed")
+}

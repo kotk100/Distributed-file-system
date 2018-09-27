@@ -5,6 +5,8 @@ import (
 	"sync"
 )
 
+const alpha = 3
+
 type FindNodeRequestCallback interface {
 	successRequest(contactAsked Contact,KClosestOfTarget []Contact)
 	errorRequest(contactAsked Contact)
@@ -14,44 +16,74 @@ type LookupNode struct{
 	target Contact
 	shortlist []LookupNodeContact
 	mux sync.Mutex
+	lookupNodeParallelism *LookupNodeParallelism
 }
 
 func NewLookupNode(target Contact) *LookupNode {
 	lookup := &LookupNode{}
 	lookup.shortlist=make([]LookupNodeContact,0)
 	lookup.target = target
+	lookup.lookupNodeParallelism=NewLookupNodeParallelism(lookup)
 	return lookup
 }
 
 //give channel or callback to get K closest result
+//select alpha contacts close of the target id
 func (lookupNode *LookupNode) start(){
-	contactsCloseOfTarget := MyRoutingTable.FindClosestContacts(lookupNode.target.ID,bucketSize)
-	for _, contact := range contactsCloseOfTarget{
-		lookupNode.shortlist = append(lookupNode.shortlist,NewLookupNodeContact(contact))
+	contactsCloseOfTarget := MyRoutingTable.FindClosestContacts(lookupNode.target.ID,alpha)
+	if len(contactsCloseOfTarget)>0 {
+		SendAndReceiveFindNode(lookupNode,lookupNode.target.ID,&contactsCloseOfTarget[1])
 	}
-	lookupNode.sendFindNodeRequest()
-	lookupNode.sendFindNodeRequest()
-	lookupNode.sendFindNodeRequest()
+	if len(contactsCloseOfTarget)>1 {
+		SendAndReceiveFindNode(lookupNode,lookupNode.target.ID,&contactsCloseOfTarget[2])
+	}
+	if len(contactsCloseOfTarget)>2 {
+		SendAndReceiveFindNode(lookupNode,lookupNode.target.ID,&contactsCloseOfTarget[3])
+	}
+	lookupNode.lookupNodeParallelism.start()
 }
 
 //callback for request executor
 func (lookupNode *LookupNode) successRequest(contactAsked Contact,KClosestOfTarget []Contact){
-
+	lookupNode.changeLookupContactState(contactAsked,ASKED)
+	for _, v := range KClosestOfTarget {
+		lookupNode.handleNewContact(v)
+	}
+	if lookupNode.isKClosestContactHasBeenFound(){
+		lookupNode.lookupNodeParallelism.stop()
+		//TODO callback or channel to send k closest found
+	}else{
+		lookupNode.lookupNodeParallelism.restartClock()
+		lookupNode.sendFindNodeRequest()
+	}
 }
 
 func (lookupNode *LookupNode) errorRequest(contactAsked Contact){
+	lookupNode.changeLookupContactState(contactAsked,FAILED)
+	lookupNode.cleanShortList()
+}
 
+func (lookupNode *LookupNode) cleanShortList(){
+	lookupNode.mux.Lock()
+	for lookupNode.shortListNeedToBeCleaned() {
+		failNodeIndex := lookupNode.getFailNodeIndex()
+		lookupNode.shortlist =lookupNode.shortlist[:failNodeIndex+copy(lookupNode.shortlist[failNodeIndex:], lookupNode.shortlist[failNodeIndex+1:])]
+	}
+	lookupNode.mux.Unlock()
 }
 
 func (lookupNode *LookupNode) sendFindNodeRequest(){
 	lookupNode.mux.Lock()
 	contactToAsk := lookupNode.getLookupNodeContactUnAsked()
-	lookupNode.changeLookupNodeContactState(contactToAsk,ASKING)
-	lookupNode.mux.Unlock()
-	SendAndReceiveFindNode(lookupNode,lookupNode.target.ID,&contactToAsk.contact)
+	if contactToAsk !=nil{
+		lookupNode.changeLookupNodeContactState(contactToAsk,ASKING)
+		lookupNode.mux.Unlock()
+		SendAndReceiveFindNode(lookupNode,lookupNode.target.ID,&contactToAsk.contact)
+	} else{
+		lookupNode.mux.Unlock()
+	}
+
 }
-
-
 
 func (lookupNode *LookupNode) handleNewContact(contact Contact){
 	contact.distance = contact.ID.CalcDistance(lookupNode.target.ID)
@@ -96,6 +128,15 @@ func (lookupNode *LookupNode) isKClosestContactHasBeenFound() bool{
 	return true
 }
 
+func (lookupNode *LookupNode) shortListNeedToBeCleaned() bool{
+	for _, v := range lookupNode.shortlist {
+		if v.lookupState == FAILED {
+			return true
+		}
+	}
+	return false
+}
+
 //can return nil
 func (lookupNode *LookupNode) getLookupNodeContactUnAsked() *LookupNodeContact{
 	for i:= range lookupNode.shortlist {
@@ -106,9 +147,27 @@ func (lookupNode *LookupNode) getLookupNodeContactUnAsked() *LookupNodeContact{
 	return nil
 }
 
+func (lookupNode *LookupNode) getFailNodeIndex() int{
+	for i:= range lookupNode.shortlist {
+		if lookupNode.shortlist[i].lookupState == FAILED {
+			return i
+		}
+	}
+	return -1
+}
+
 func (lookupNode *LookupNode) changeLookupNodeContactState(contact *LookupNodeContact,state LookupNodeContactState){
 	for i := range lookupNode.shortlist {
 		if lookupNode.shortlist[i].contact.ID == contact.contact.ID {
+			lookupNode.shortlist[i].lookupState = state
+			break
+		}
+	}
+}
+
+func (lookupNode *LookupNode) changeLookupContactState(contact Contact,state LookupNodeContactState){
+	for i := range lookupNode.shortlist {
+		if lookupNode.shortlist[i].contact.ID == contact.ID {
 			lookupNode.shortlist[i].lookupState = state
 			break
 		}
