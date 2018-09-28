@@ -3,6 +3,7 @@ package kademlia
 import (
 	"sort"
 	"sync"
+	log "github.com/sirupsen/logrus"
 )
 
 const alpha = 3
@@ -12,34 +13,45 @@ type FindNodeRequestCallback interface {
 	errorRequest(contactAsked Contact)
 }
 
+type LookupNodeCallback interface {
+	processKClosest(KClosestOfTarget []LookupNodeContact)
+}
+
+
 type LookupNode struct{
 	target Contact
 	shortlist []LookupNodeContact
 	mux sync.Mutex
 	lookupNodeParallelism *LookupNodeParallelism
+	lookupNodeCallback *LookupNodeCallback
 }
 
-func NewLookupNode(target Contact) *LookupNode {
+func NewLookupNode(target Contact,lookupNodeCallback LookupNodeCallback) *LookupNode {
 	lookup := &LookupNode{}
 	lookup.shortlist=make([]LookupNodeContact,0)
 	lookup.target = target
 	lookup.lookupNodeParallelism=NewLookupNodeParallelism(lookup)
+	lookup.lookupNodeCallback = &lookupNodeCallback
 	return lookup
 }
 
 //give channel or callback to get K closest result
 //select alpha contacts close of the target id
-func (lookupNode *LookupNode) start(){
+func (lookupNode *LookupNode) Start(){
 	contactsCloseOfTarget := MyRoutingTable.FindClosestContacts(lookupNode.target.ID,alpha)
+	log.WithFields(log.Fields{
+		"Contacts alpha":   contactsCloseOfTarget,
+	}).Info("Start find node.")
 	if len(contactsCloseOfTarget)>0 {
-		SendAndReceiveFindNode(lookupNode,lookupNode.target.ID,&contactsCloseOfTarget[1])
+		SendAndReceiveFindNode(lookupNode,lookupNode.target.ID,&contactsCloseOfTarget[0])
 	}
 	if len(contactsCloseOfTarget)>1 {
-		SendAndReceiveFindNode(lookupNode,lookupNode.target.ID,&contactsCloseOfTarget[2])
+		SendAndReceiveFindNode(lookupNode,lookupNode.target.ID,&contactsCloseOfTarget[1])
 	}
 	if len(contactsCloseOfTarget)>2 {
-		SendAndReceiveFindNode(lookupNode,lookupNode.target.ID,&contactsCloseOfTarget[3])
+		SendAndReceiveFindNode(lookupNode,lookupNode.target.ID,&contactsCloseOfTarget[2])
 	}
+
 	lookupNode.lookupNodeParallelism.start()
 }
 
@@ -49,9 +61,17 @@ func (lookupNode *LookupNode) successRequest(contactAsked Contact,KClosestOfTarg
 	for _, v := range KClosestOfTarget {
 		lookupNode.handleNewContact(v)
 	}
+	log.WithFields(log.Fields{
+		"Contacts":   contactAsked,
+		"KClosestOfTarget":KClosestOfTarget,
+		"shortlist":   lookupNode.shortlist,
+	}).Info("Find node get answer.")
 	if lookupNode.isKClosestContactHasBeenFound(){
+		log.WithFields(log.Fields{
+			"KClosestOfTarget":lookupNode.shortlist,
+		}).Info("Find node return k closest.")
 		lookupNode.lookupNodeParallelism.stop()
-		//TODO callback or channel to send k closest found
+		(*lookupNode.lookupNodeCallback).processKClosest(lookupNode.shortlist)
 	}else{
 		lookupNode.lookupNodeParallelism.restartClock()
 		lookupNode.sendFindNodeRequest()
@@ -78,6 +98,9 @@ func (lookupNode *LookupNode) sendFindNodeRequest(){
 	if contactToAsk !=nil{
 		lookupNode.changeLookupNodeContactState(contactToAsk,ASKING)
 		lookupNode.mux.Unlock()
+		log.WithFields(log.Fields{
+			"contactToAsk":contactToAsk,
+		}).Info("Send find node request from lookup node")
 		SendAndReceiveFindNode(lookupNode,lookupNode.target.ID,&contactToAsk.contact)
 	} else{
 		lookupNode.mux.Unlock()
@@ -158,7 +181,7 @@ func (lookupNode *LookupNode) getFailNodeIndex() int{
 
 func (lookupNode *LookupNode) changeLookupNodeContactState(contact *LookupNodeContact,state LookupNodeContactState){
 	for i := range lookupNode.shortlist {
-		if lookupNode.shortlist[i].contact.ID == contact.contact.ID {
+		if lookupNode.shortlist[i].contact.ID.Equals(contact.contact.ID) {
 			lookupNode.shortlist[i].lookupState = state
 			break
 		}
@@ -167,7 +190,7 @@ func (lookupNode *LookupNode) changeLookupNodeContactState(contact *LookupNodeCo
 
 func (lookupNode *LookupNode) changeLookupContactState(contact Contact,state LookupNodeContactState){
 	for i := range lookupNode.shortlist {
-		if lookupNode.shortlist[i].contact.ID == contact.ID {
+		if lookupNode.shortlist[i].contact.ID.Equals(contact.ID) {
 			lookupNode.shortlist[i].lookupState = state
 			break
 		}

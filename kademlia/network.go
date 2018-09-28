@@ -27,7 +27,7 @@ func handleIncomingMessage(buf []byte, addr *net.UDPAddr) {
 
 	log.WithFields(log.Fields{
 		"RPC": rpc,
-	}).Info("Recieved incoming message.")
+	}).Debug("Recieved incoming message.")
 
 	// Forward message to the right routine
 	sendMessageToRoutine(rpc)
@@ -132,7 +132,7 @@ func (network *Network) SendPingMessage(originalSender *KademliaID,contact *Cont
 				}).Error("Failed to write message to connection.")
 				error=true
 			} else {
-				log.Info("Message writen to conn.")
+				log.Debug("Message writen to conn.")
 			}
 		}
 	}
@@ -168,7 +168,7 @@ func (network *Network) SendFindContactMessage(targetId *KademliaID,originalSend
 				}).Error("Failed to write message to connection.")
 				error=true
 			} else {
-				log.Info("Message writen to conn.")
+				log.Debug("Message writen to conn.")
 			}
 		}
 	}

@@ -1,5 +1,7 @@
 package kademlia
 
+import log "github.com/sirupsen/logrus"
+
 const bucketSize = 20
 
 var MyRoutingTable *RoutingTable
@@ -21,11 +23,18 @@ func NewRoutingTable(me Contact) *RoutingTable {
 	return routingTable
 }
 
-// AddContact add a new contact to the correct Bucket
-func (routingTable *RoutingTable) AddContact(contact Contact) {
+// AddContactAsync add a new contact to the correct Bucket
+func (routingTable *RoutingTable) AddContactAsync(contact Contact) {
 	bucketIndex := routingTable.getBucketIndex(contact.ID)
 	bucket := routingTable.buckets[bucketIndex]
 	go bucket.AddContact(contact)
+}
+
+// AddContactAsync add a new contact to the correct Bucket
+func (routingTable *RoutingTable) AddContact(contact Contact) {
+	bucketIndex := routingTable.getBucketIndex(contact.ID)
+	bucket := routingTable.buckets[bucketIndex]
+	bucket.AddContact(contact)
 }
 
 // FindClosestContacts finds the count closest Contacts to the target in the RoutingTable
@@ -72,4 +81,11 @@ func (routingTable *RoutingTable) getBucketIndex(id *KademliaID) int {
 
 func (routingTable *RoutingTable) GetMe() Contact{
 	return routingTable.me
+}
+
+func (routingTable *RoutingTable) Print(){
+	log.Debug("routing table contents")
+	for i := 0; i < IDLength*8; i++ {
+		routingTable.buckets[i].print()
+	}
 }

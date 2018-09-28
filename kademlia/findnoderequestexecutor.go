@@ -10,7 +10,7 @@ type FindNodeRequestExecutor struct{
 	id messageID
 	contact *Contact
 	target *KademliaID
-	callback FindNodeRequestCallback
+	callback *FindNodeRequestCallback
 }
 
 func (findNodeRequestExecutor *FindNodeRequestExecutor) execute(){
@@ -26,7 +26,7 @@ func (findNodeRequestExecutor *FindNodeRequestExecutor) execute(){
 		log.Info("Error to send FindNode message.")
 		destroyRoutine(findNodeRequestExecutor.id)
 		if findNodeRequestExecutor.callback!=nil{
-			findNodeRequestExecutor.callback.errorRequest(*findNodeRequestExecutor.contact)
+			(*findNodeRequestExecutor.callback).errorRequest(*findNodeRequestExecutor.contact)
 		}
 	}else{
 		timeout:=NewTimeout(findNodeRequestExecutor.id,findNodeRequestExecutor.ch)
@@ -40,15 +40,16 @@ func (findNodeRequestExecutor *FindNodeRequestExecutor) execute(){
 
 		if findNodeRequestExecutor.callback!=nil{
 			if rpc==nil{
-				findNodeRequestExecutor.callback.errorRequest(*findNodeRequestExecutor.contact)
+				log.Error("find node request time out.")
+				(*findNodeRequestExecutor.callback).errorRequest(*findNodeRequestExecutor.contact)
 			}else{
 				// Parse ping message and create contact
 				findNode := parseFindNodeRequest(rpc)
 				contactSender := createContactFromFindNode(findNode, rpc)
 				contacts := FindNode_ContactToContact(findNode.Contacts)
-				findNodeRequestExecutor.callback.successRequest(*contactSender,contacts)
+				(*findNodeRequestExecutor.callback).successRequest(*contactSender,contacts)
 
-				MyRoutingTable.AddContact(*contactSender)
+				MyRoutingTable.AddContactAsync(*contactSender)
 			}
 		}
 		destroyRoutine(findNodeRequestExecutor.id)

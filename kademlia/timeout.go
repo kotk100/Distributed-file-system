@@ -32,7 +32,7 @@ func (timeout *Timeout) run(){
 	select {
 	case <-timeout.timeoutStop:
 		break
-	case <-time.After(10 * time.Second):
+	case <-time.After(5 * time.Second):
 		timeOutManager := timeOutManager.tryGetAndRemoveTimeOut(timeout.messageID)
 		if timeOutManager!=nil{
 			timeout.ch<-nil

@@ -6,6 +6,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"os"
 	"runtime"
+	"time"
 )
 
 
@@ -13,7 +14,7 @@ func init() {
 	// Log output
 	log.SetOutput(os.Stdout)
 	// Only log the warning severity or above.
-	//log.SetLevel(log.WarnLevel)
+	log.SetLevel(log.DebugLevel)
 }
 
 
@@ -37,9 +38,17 @@ func main() {
 		contact := &kademlia.Contact{}
 		contact.Address = dns_name
 
-		kademlia.SendAndRecievePing(contact)
+
+		boostrap:=kademlia.Bootstrap{}
+		kademlia.SendAndRecievePing(contact,&boostrap)
+
 		fmt.Println("Message sent.")
 	}
+
+	for start:= time.Now();time.Since(start)<10*time.Second;{
+		runtime.Gosched()
+	}
+	kademlia.MyRoutingTable.Print()
 
 	// Wait forever
 	for {

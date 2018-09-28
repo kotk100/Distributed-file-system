@@ -29,7 +29,7 @@ func createRoutine(executor RequestExecutor) {
 	log.WithFields(log.Fields{
 		"Map":       m,
 		"messageID": messageID,
-	}).Info("Creating a new routine.")
+	}).Debug("Creating a new routine.")
 
 	executor.setChannel(c)
 	executor.setMessageId(messageID)
@@ -53,7 +53,7 @@ func sendMessageToRoutine(msg *protocol.RPC) {
 	if MyRoutingTable.me.ID.Equals(originalSender) {
 		log.WithFields(log.Fields{
 			"ID": id,
-		}).Info("Recieved message is a response to a request.")
+		}).Debug("Recieved message is a response to a request.")
 		// Get channel
 		c := m[id]
 		if c!=nil {
@@ -63,7 +63,7 @@ func sendMessageToRoutine(msg *protocol.RPC) {
 	}else{
 		log.WithFields(log.Fields{
 			"ID": id,
-		}).Info("Recieved message is a request.")
+		}).Debug("Recieved message is a request.")
 
 		switch msgType := msg.MessageType; msgType {
 		case protocol.RPC_PING:

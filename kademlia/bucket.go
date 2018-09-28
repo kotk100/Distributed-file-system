@@ -23,13 +23,16 @@ func newBucket() *bucket {
 	return bucket
 }
 
-// AddContact adds the Contact to the front of the bucket
+// AddContactAsync adds the Contact to the front of the bucket
 // or moves it to the front of the bucket if it already existed
 func (bucket *bucket) AddContact(contact Contact) {
+	if MyRoutingTable.GetMe().ID.Equals(contact.ID){
+		return
+	}
 	bucket.mux.Lock()
 	log.WithFields(log.Fields{
 		"Contact": contact,
-	}).Info("Updating bucket.")
+	}).Debug("Updating bucket.")
 	var element *list.Element
 	for e := bucket.list.Front(); e != nil; e = e.Next() {
 		nodeID := e.Value.(Contact).ID
@@ -74,4 +77,10 @@ func (bucket *bucket) GetContactAndCalcDistance(target *KademliaID) []Contact {
 // Len return the size of the bucket
 func (bucket *bucket) Len() int {
 	return bucket.list.Len()
+}
+
+func (bucket *bucket) print(){
+	log.WithFields(log.Fields{
+		"contents":bucket.list,
+	}).Debug("")
 }

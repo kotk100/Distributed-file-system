@@ -14,7 +14,7 @@ func SendAndReceiveFindNode(callback FindNodeRequestCallback,target *KademliaID,
 	findNodeRequestExecutor := FindNodeRequestExecutor{}
 	findNodeRequestExecutor.contact = contact
 	findNodeRequestExecutor.target = target
-	findNodeRequestExecutor.callback = callback
+	findNodeRequestExecutor.callback = &callback
 	createRoutine(&findNodeRequestExecutor)
 }
 
@@ -61,7 +61,7 @@ func answerFindNodeRequest(msg *protocol.RPC) {
 
 	net.SendFindContactMessage(targetId,originalSender,sender,contacts,id)
 
-	MyRoutingTable.AddContact(*sender)
+	MyRoutingTable.AddContactAsync(*sender)
 }
 
 
