@@ -4,12 +4,14 @@ import (
 	"./protocol"
 	log "github.com/sirupsen/logrus"
 	"math/rand"
+	"sync"
 )
 
 type rpcFunc func(chan *protocol.RPC, messageID, *Contact)
 type messageID [20]byte
 
 var m = make(map[messageID]chan *protocol.RPC)
+var mutexMap sync.Mutex
 
 // Create a routine for the provided function and a way to send message responses back to it
 // TODO logging
@@ -24,7 +26,9 @@ func createRoutine(executor RequestExecutor) {
 	}
 
 	// Save (ID, channel) in map
+	mutexMap.Lock()
 	m[messageID] = c
+	mutexMap.Unlock()
 
 	log.WithFields(log.Fields{
 		"Map":       m,
@@ -39,7 +43,9 @@ func createRoutine(executor RequestExecutor) {
 
 
 func destroyRoutine(id messageID){
+	mutexMap.Lock()
 	delete(m, id)
+	mutexMap.Unlock()
 }
 
 func sendMessageToRoutine(msg *protocol.RPC) {
@@ -55,11 +61,13 @@ func sendMessageToRoutine(msg *protocol.RPC) {
 			"ID": id,
 		}).Debug("Recieved message is a response to a request.")
 		// Get channel
+		mutexMap.Lock()
 		c := m[id]
 		if c!=nil {
 			// Write message to channel
 			c <- msg
 		}
+		mutexMap.Unlock()
 	}else{
 		log.WithFields(log.Fields{
 			"ID": id,
@@ -67,11 +75,11 @@ func sendMessageToRoutine(msg *protocol.RPC) {
 
 		switch msgType := msg.MessageType; msgType {
 		case protocol.RPC_PING:
-			answerPingRequest(msg)
+			go answerPingRequest(msg)
 		case protocol.RPC_STORE:
 			//TODO
 		case protocol.RPC_FIND_NODE:
-			answerFindNodeRequest(msg)
+			go answerFindNodeRequest(msg)
 		case protocol.RPC_FIND_VALUE:
 			//TODO
 		case protocol.RPC_PIN:

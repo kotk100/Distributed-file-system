@@ -135,9 +135,9 @@ func (network *Network) SendPingMessage(originalSender *KademliaID,contact *Cont
 				log.Debug("Message writen to conn.")
 			}
 		}
+		// Close connection
+		conn.Close()
 	}
-	// Close connection
-	conn.Close()
 	return error
 }
 
@@ -171,6 +171,8 @@ func (network *Network) SendFindContactMessage(targetId *KademliaID,originalSend
 				log.Debug("Message writen to conn.")
 			}
 		}
+		// Close connection
+		conn.Close()
 	}
 
 	return error

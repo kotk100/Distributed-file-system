@@ -25,12 +25,15 @@ func (requestExecutorPing *PingRequestExecutor) execute() {
 	if error {
 		log.Info("Error to send ping.")
 		destroyRoutine(requestExecutorPing.id)
+		requestExecutorPing.pingCallback.pingResult(false)
 	} else {
 		timeout := NewTimeout(requestExecutorPing.id, requestExecutorPing.ch)
 		timeOutManager.insertAndStart(timeout)
 		// Recieve response message through channel
 		rpc := <-requestExecutorPing.ch
-		timeOutManager.tryGetAndRemoveTimeOut(requestExecutorPing.id)
+		if optionalTimeout:=timeOutManager.tryGetAndRemoveTimeOut(requestExecutorPing.id);optionalTimeout!=nil{
+			optionalTimeout.stop()
+		}
 		log.Info("Received PING message response.")
 		if rpc == nil {
 			log.Error("ping request time out.")

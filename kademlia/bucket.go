@@ -10,7 +10,8 @@ import (
 // contains a List
 type bucket struct {
 	list *list.List
-	mux sync.Mutex
+	muxAdd sync.Mutex
+	muxAccessBucket sync.Mutex
 	contactToInsert Contact
 	networkAPI NetworkAPI
 }
@@ -29,7 +30,8 @@ func (bucket *bucket) AddContact(contact Contact) {
 	if MyRoutingTable.GetMe().ID.Equals(contact.ID){
 		return
 	}
-	bucket.mux.Lock()
+	bucket.muxAdd.Lock()
+	bucket.muxAccessBucket.Lock()
 	log.WithFields(log.Fields{
 		"Contact": contact,
 	}).Debug("Updating bucket.")
@@ -45,10 +47,12 @@ func (bucket *bucket) AddContact(contact Contact) {
 	if element == nil {
 		if bucket.list.Len() < bucketSize {
 			bucket.list.PushFront(contact)
-			bucket.mux.Unlock()
+			bucket.muxAccessBucket.Unlock()
+			bucket.muxAdd.Unlock()
 		} else{
 			bucket.contactToInsert = contact
 			contact:=bucket.list.Back().Value.(Contact)
+			bucket.muxAccessBucket.Unlock()
 			pingBucketRequestExecutor:= PingBucketRequestExecutor{}
 			pingBucketRequestExecutor.contact = &contact
 			pingBucketRequestExecutor.bucket = bucket
@@ -56,7 +60,8 @@ func (bucket *bucket) AddContact(contact Contact) {
 		}
 	} else {
 		bucket.list.MoveToFront(element)
-		bucket.mux.Unlock()
+		bucket.muxAccessBucket.Unlock()
+		bucket.muxAdd.Unlock()
 	}
 }
 
@@ -64,13 +69,13 @@ func (bucket *bucket) AddContact(contact Contact) {
 // the distance has already been calculated
 func (bucket *bucket) GetContactAndCalcDistance(target *KademliaID) []Contact {
 	var contacts []Contact
-
+	bucket.muxAccessBucket.Lock()
 	for elt := bucket.list.Front(); elt != nil; elt = elt.Next() {
 		contact := elt.Value.(Contact)
 		contact.CalcDistance(target)
 		contacts = append(contacts, contact)
 	}
-
+	bucket.muxAccessBucket.Unlock()
 	return contacts
 }
 
@@ -80,7 +85,9 @@ func (bucket *bucket) Len() int {
 }
 
 func (bucket *bucket) print(){
+	bucket.muxAccessBucket.Lock()
 	log.WithFields(log.Fields{
 		"contents":bucket.list,
-	}).Debug("")
+	}).Info("")
+	bucket.muxAccessBucket.Unlock()
 }

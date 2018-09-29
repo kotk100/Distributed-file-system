@@ -4,10 +4,12 @@ import (
 	"net"
 	"os"
 	log "github.com/sirupsen/logrus"
+	"strings"
 )
 
 type Kademlia struct {
 }
+
 
 func InitMyInformation(port string){
 	addrs, err := net.InterfaceAddrs()
@@ -19,7 +21,7 @@ func InitMyInformation(port string){
 	}else{
 		for _, a := range addrs {
 			if ipnet, ok := a.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
-				if ipnet.IP.To4() != nil {
+				if ipnet.IP.To4() != nil && strings.HasPrefix(ipnet.IP.String(), "10"){
 					IPaddress= ipnet.IP.String()
 					break
 				}

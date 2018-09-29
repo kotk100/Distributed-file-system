@@ -84,7 +84,7 @@ func (routingTable *RoutingTable) GetMe() Contact{
 }
 
 func (routingTable *RoutingTable) Print(){
-	log.Debug("routing table contents")
+	log.Info("routing table contents")
 	for i := 0; i < IDLength*8; i++ {
 		routingTable.buckets[i].print()
 	}

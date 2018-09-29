@@ -28,16 +28,21 @@ func (pingBucketRequestExecutor *PingBucketRequestExecutor) execute(){
 	// Receive response message through channel
 	if error {
 		log.Info("Error to send bucket ping.")
+		pingBucketRequestExecutor.bucket.muxAccessBucket.Lock()
 		pingBucketRequestExecutor.bucket.list.Remove(element)
 		pingBucketRequestExecutor.bucket.list.PushFront(pingBucketRequestExecutor.bucket.contactToInsert)
-		pingBucketRequestExecutor.bucket.mux.Unlock()
+		pingBucketRequestExecutor.bucket.muxAccessBucket.Unlock()
+		pingBucketRequestExecutor.bucket.muxAdd.Unlock()
 		destroyRoutine(pingBucketRequestExecutor.id)
 	}else{
 		timeout:=NewTimeout(pingBucketRequestExecutor.id,pingBucketRequestExecutor.ch)
 		timeOutManager.insertAndStart(timeout)
 		rpc := <-pingBucketRequestExecutor.ch
-		timeOutManager.tryGetAndRemoveTimeOut(pingBucketRequestExecutor.id)
+		if optionalTimeout:=timeOutManager.tryGetAndRemoveTimeOut(pingBucketRequestExecutor.id);optionalTimeout!=nil{
+			optionalTimeout.stop()
+		}
 		//timeout
+		pingBucketRequestExecutor.bucket.muxAccessBucket.Lock()
 		if element !=nil{
 			if rpc == nil{
 				log.Info("PING bucket time out.")
@@ -48,7 +53,8 @@ func (pingBucketRequestExecutor *PingBucketRequestExecutor) execute(){
 				pingBucketRequestExecutor.bucket.list.MoveToFront(element)
 			}
 		}
-		pingBucketRequestExecutor.bucket.mux.Unlock()
+		pingBucketRequestExecutor.bucket.muxAccessBucket.Unlock()
+		pingBucketRequestExecutor.bucket.muxAdd.Unlock()
 		destroyRoutine(pingBucketRequestExecutor.id)
 	}
 }

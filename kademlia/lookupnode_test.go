@@ -81,28 +81,28 @@ func setStateForAllContact(lookupNode *LookupNode,state LookupNodeContactState){
 //////////////////TESTS
 
 func TestFirstContactIsInShortList(t *testing.T) {
-	lookup := NewLookupNode(NewContact(NewKademliaID("1111111111000000000000000000000000000000"), "localhost:8000"))
+	lookup := NewLookupNode(NewContact(NewKademliaID("1111111111000000000000000000000000000000"), "localhost:8000"),nil)
 	contact:=NewContact(NewKademliaID("1111111101000000000000000000000000000000"), "localhost:8000")
 	lookup.shortlist=append(lookup.shortlist,NewLookupNodeContact(contact))
 	assert.Equal(t,true, lookup.contactIsInShortlist(&contact), "Contact should be in the shortlist")
 }
 
 func TestContactIsNotInEmptyShortList(t *testing.T) {
-	lookup := NewLookupNode(NewContact(NewKademliaID("1111111111000000000000000000000000000000"), "localhost:8000"))
+	lookup := NewLookupNode(NewContact(NewKademliaID("1111111111000000000000000000000000000000"), "localhost:8000"),nil)
 	contact:=NewContact(NewKademliaID("1111111101000000000000000000000000000000"), "localhost:8000")
 	assert.Equal(t,false, lookup.contactIsInShortlist(&contact), "Contact should not be in the shortlist")
 
 }
 
 func TestContactIsInFullShortList(t *testing.T) {
-	lookup := NewLookupNode(NewContact(NewKademliaID("1111111111000000000000000000000000000000"), "localhost:8000"))
+	lookup := NewLookupNode(NewContact(NewKademliaID("1111111111000000000000000000000000000000"), "localhost:8000"),nil)
 	fillShortList(lookup)
 	contact:=NewContact(NewKademliaID("1111111101000000000000000100000000000000"), "localhost:8000")
 	assert.Equal(t,true, lookup.contactIsInShortlist(&contact), "Contact should be in the shortlist")
 }
 
 func TestContactIsNotInFullShortList(t *testing.T) {
-	lookup := NewLookupNode(NewContact(NewKademliaID("1111111111000000000000000000000000000000"), "localhost:8000"))
+	lookup := NewLookupNode(NewContact(NewKademliaID("1111111111000000000000000000000000000000"), "localhost:8000"),nil)
 	fillShortList(lookup)
 	contact:=NewContact(NewKademliaID("1111111101000000000001111100000000000000"), "localhost:8000")
 	assert.Equal(t,false, lookup.contactIsInShortlist(&contact), "Contact should be in the shortlist")
@@ -110,7 +110,7 @@ func TestContactIsNotInFullShortList(t *testing.T) {
 
 func TestShortlistIsOrdered(t *testing.T) {
 	target:=NewContact(NewKademliaID("1111111111000000000000000000000000000000"), "localhost:8000")
-	lookup := NewLookupNode(target)
+	lookup := NewLookupNode(target,nil)
 	fillShortList(lookup)
 	assert.Equal(t,20, len(lookup.shortlist), "Shortlist size should be 20")
 	if !(lookup.shortlist[0].contact.distance.Less(lookup.shortlist[1].contact.distance) &&
@@ -138,7 +138,7 @@ func TestShortlistIsOrdered(t *testing.T) {
 
 func TestAllKClosestHasBeenFound(t *testing.T){
 	target:=NewContact(NewKademliaID("1111111111000000000000000000000000000000"), "localhost:8000")
-	lookup := NewLookupNode(target)
+	lookup := NewLookupNode(target,nil)
 	fillShortList(lookup)
 	setStateForAllContact(lookup,ASKED)
 	assert.Equal(t,true, lookup.isKClosestContactHasBeenFound(), "Should have found k closest")
@@ -146,7 +146,7 @@ func TestAllKClosestHasBeenFound(t *testing.T){
 
 func TestChangeContactStatus(t *testing.T){
 	target:=NewContact(NewKademliaID("1111111111000000000000000000000000000000"), "localhost:8000")
-	lookup := NewLookupNode(target)
+	lookup := NewLookupNode(target,nil)
 	fillShortList(lookup)
 	contact:=&lookup.shortlist[3]
 	lookup.changeLookupNodeContactState(contact,ASKING)
@@ -156,7 +156,7 @@ func TestChangeContactStatus(t *testing.T){
 
 func TestUpdateShortList(t *testing.T){
 	target:=NewContact(NewKademliaID("1111111111000000000000000000000000000000"), "localhost:8000")
-	lookup := NewLookupNode(target)
+	lookup := NewLookupNode(target,nil)
 	fillShortList(lookup)
 	newContact:=NewContact(NewKademliaID("1111111111000000000000000000000000000001"), "localhost:8000")
 	newContact.distance = newContact.ID.CalcDistance(target.ID)
@@ -166,7 +166,7 @@ func TestUpdateShortList(t *testing.T){
 
 func TestUpdateLastContactShortList(t *testing.T){
 	target:=NewContact(NewKademliaID("1111111111000000000000000000000000000000"), "localhost:8000")
-	lookup := NewLookupNode(target)
+	lookup := NewLookupNode(target,nil)
 	fillShortList(lookup)
 	newContact:=NewContact(NewKademliaID("1011111111111111000000000000000000000000"), "localhost:8000")
 	newContact.distance = newContact.ID.CalcDistance(target.ID)
@@ -176,7 +176,7 @@ func TestUpdateLastContactShortList(t *testing.T){
 }
 func TestUpdateMiddleContactShortList(t *testing.T){
 	target:=NewContact(NewKademliaID("1111111111000000000000000000000000000000"), "localhost:8000")
-	lookup := NewLookupNode(target)
+	lookup := NewLookupNode(target,nil)
 	fillShortList(lookup)
 	newContact:=NewContact(NewKademliaID("1111111101000110000000000000000000000000"), "localhost:8000")
 	newContact.distance = newContact.ID.CalcDistance(target.ID)
@@ -188,7 +188,7 @@ func TestUpdateMiddleContactShortList(t *testing.T){
 
 func TestCleanShortList(t *testing.T){
 	target:=NewContact(NewKademliaID("1111111111000000000000000000000000000000"), "localhost:8000")
-	lookup := NewLookupNode(target)
+	lookup := NewLookupNode(target,nil)
 	fillShortList(lookup)
 	contact:=lookup.shortlist[3]
 	lookup.errorRequest(contact.contact)
