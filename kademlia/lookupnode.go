@@ -66,7 +66,7 @@ func (lookupNode *LookupNode) successRequest(contactAsked Contact, KClosestOfTar
 	if lookupNode.isKClosestContactHasBeenFound() {
 		log.WithFields(log.Fields{
 			"KClosestOfTarget": lookupNode.shortlist,
-		}).Error("Find node return k closest.")
+		}).Info("Find node return k closest.")
 		lookupNode.lookupNodeParallelism.stop()
 		(*lookupNode.lookupNodeCallback).processKClosest(lookupNode.shortlist)
 	} else {
