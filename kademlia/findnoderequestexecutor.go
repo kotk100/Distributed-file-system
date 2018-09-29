@@ -5,49 +5,49 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-type FindNodeRequestExecutor struct{
-	ch chan *protocol.RPC
-	id messageID
-	contact *Contact
-	target *KademliaID
+type FindNodeRequestExecutor struct {
+	ch       chan *protocol.RPC
+	id       messageID
+	contact  *Contact
+	target   *KademliaID
 	callback *FindNodeRequestCallback
 }
 
-func (findNodeRequestExecutor *FindNodeRequestExecutor) execute(){
+func (findNodeRequestExecutor *FindNodeRequestExecutor) execute() {
 	// Send ping message to other node
 	var network Network
 	error := network.SendFindContactMessage(findNodeRequestExecutor.target,
 		MyRoutingTable.me.ID,
 		findNodeRequestExecutor.contact,
-		make([]Contact,0),
+		make([]Contact, 0),
 		findNodeRequestExecutor.id)
 	//if the channel return nil then there was error
 	if error {
 		log.Info("Error to send FindNode message.")
 		destroyRoutine(findNodeRequestExecutor.id)
-		if findNodeRequestExecutor.callback!=nil{
+		if findNodeRequestExecutor.callback != nil {
 			(*findNodeRequestExecutor.callback).errorRequest(*findNodeRequestExecutor.contact)
 		}
-	}else{
-		timeout:=NewTimeout(findNodeRequestExecutor.id,findNodeRequestExecutor.ch)
+	} else {
+		timeout := NewTimeout(findNodeRequestExecutor.id, findNodeRequestExecutor.ch)
 		timeOutManager.insertAndStart(timeout)
 		// Recieve response message through channel
 		rpc := <-findNodeRequestExecutor.ch
-		if optionalTimeout:=timeOutManager.tryGetAndRemoveTimeOut(findNodeRequestExecutor.id);optionalTimeout!=nil{
+		if optionalTimeout := timeOutManager.tryGetAndRemoveTimeOut(findNodeRequestExecutor.id); optionalTimeout != nil {
 			optionalTimeout.stop()
 		}
 		log.Info("Received FindNode message response.")
 
-		if findNodeRequestExecutor.callback!=nil{
-			if rpc==nil{
+		if findNodeRequestExecutor.callback != nil {
+			if rpc == nil {
 				log.Error("find node request time out.")
 				(*findNodeRequestExecutor.callback).errorRequest(*findNodeRequestExecutor.contact)
-			}else{
+			} else {
 				// Parse ping message and create contact
 				findNode := parseFindNodeRequest(rpc)
-				contactSender := createContactFromFindNode(findNode, rpc)
+				contactSender := createContactFromFindNode(rpc)
 				contacts := FindNode_ContactToContact(findNode.Contacts)
-				(*findNodeRequestExecutor.callback).successRequest(*contactSender,contacts)
+				(*findNodeRequestExecutor.callback).successRequest(*contactSender, contacts)
 
 				MyRoutingTable.AddContactAsync(*contactSender)
 			}
@@ -56,12 +56,10 @@ func (findNodeRequestExecutor *FindNodeRequestExecutor) execute(){
 	}
 }
 
-
-func (findNodeRequestExecutor *FindNodeRequestExecutor) setChannel(ch chan *protocol.RPC){
+func (findNodeRequestExecutor *FindNodeRequestExecutor) setChannel(ch chan *protocol.RPC) {
 	findNodeRequestExecutor.ch = ch
 }
 
-
-func (findNodeRequestExecutor *FindNodeRequestExecutor) setMessageId(id messageID){
+func (findNodeRequestExecutor *FindNodeRequestExecutor) setMessageId(id messageID) {
 	findNodeRequestExecutor.id = id
 }

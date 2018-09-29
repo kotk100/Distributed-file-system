@@ -6,11 +6,11 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func SendAndRecievePing(contact *Contact,pingCallback PingCallback) {
+func SendAndRecievePing(contact *Contact, pingCallback PingCallback) {
 	log.WithFields(log.Fields{
 		"Contact": contact,
 	}).Info("Sending PING message to node.")
-	pingRequestExecutor:= PingRequestExecutor{}
+	pingRequestExecutor := PingRequestExecutor{}
 	pingRequestExecutor.contact = contact
 	pingRequestExecutor.pingCallback = pingCallback
 	createRoutine(&pingRequestExecutor)
@@ -38,11 +38,10 @@ func parsePingRPC(rpc *protocol.RPC) *protocol.Ping {
 }
 
 func createContactFromPing(ping *protocol.Ping, rpc *protocol.RPC) *Contact {
-
 	// Create contact
 	contact := &Contact{}
 	contact.Address = rpc.IPaddress
-	contact.ID = KademliaIDFromSlice(ping.KademliaID)
+	contact.ID = KademliaIDFromSlice(rpc.KademliaID)
 
 	return contact
 }
@@ -62,8 +61,8 @@ func answerPingRequest(msg *protocol.RPC) {
 		"MessageID": id,
 	}).Info("Sending PING response message.")
 	net := &Network{}
-	originalSender :=KademliaIDFromSlice(msg.OriginalSender)
-	net.SendPingMessage(originalSender,contact, id)
+	originalSender := KademliaIDFromSlice(msg.OriginalSender)
+	net.SendPingMessage(originalSender, contact, id)
 
 	MyRoutingTable.AddContactAsync(*contact)
 }

@@ -9,11 +9,11 @@ import (
 // bucket definition
 // contains a List
 type bucket struct {
-	list *list.List
-	muxAdd sync.Mutex
+	list            *list.List
+	muxAdd          sync.Mutex
 	muxAccessBucket sync.Mutex
 	contactToInsert Contact
-	networkAPI NetworkAPI
+	networkAPI      NetworkAPI
 }
 
 // newBucket returns a new instance of a bucket
@@ -27,11 +27,13 @@ func newBucket() *bucket {
 // AddContactAsync adds the Contact to the front of the bucket
 // or moves it to the front of the bucket if it already existed
 func (bucket *bucket) AddContact(contact Contact) {
-	if MyRoutingTable.GetMe().ID.Equals(contact.ID){
+	if MyRoutingTable.GetMe().ID.Equals(contact.ID) {
 		return
 	}
+
 	bucket.muxAdd.Lock()
 	bucket.muxAccessBucket.Lock()
+
 	log.WithFields(log.Fields{
 		"Contact": contact,
 	}).Debug("Updating bucket.")
@@ -47,19 +49,21 @@ func (bucket *bucket) AddContact(contact Contact) {
 	if element == nil {
 		if bucket.list.Len() < bucketSize {
 			bucket.list.PushFront(contact)
+
 			bucket.muxAccessBucket.Unlock()
 			bucket.muxAdd.Unlock()
-		} else{
+		} else {
 			bucket.contactToInsert = contact
-			contact:=bucket.list.Back().Value.(Contact)
+			contact := bucket.list.Back().Value.(Contact)
 			bucket.muxAccessBucket.Unlock()
-			pingBucketRequestExecutor:= PingBucketRequestExecutor{}
+			pingBucketRequestExecutor := PingBucketRequestExecutor{}
 			pingBucketRequestExecutor.contact = &contact
 			pingBucketRequestExecutor.bucket = bucket
 			createRoutine(&pingBucketRequestExecutor)
 		}
 	} else {
 		bucket.list.MoveToFront(element)
+
 		bucket.muxAccessBucket.Unlock()
 		bucket.muxAdd.Unlock()
 	}
@@ -84,10 +88,10 @@ func (bucket *bucket) Len() int {
 	return bucket.list.Len()
 }
 
-func (bucket *bucket) print(){
+func (bucket *bucket) print() {
 	bucket.muxAccessBucket.Lock()
 	log.WithFields(log.Fields{
-		"contents":bucket.list,
+		"contents": bucket.list,
 	}).Info("")
 	bucket.muxAccessBucket.Unlock()
 }

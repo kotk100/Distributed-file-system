@@ -2,7 +2,6 @@ package main
 
 import (
 	"./kademlia"
-	"fmt"
 	log "github.com/sirupsen/logrus"
 	"os"
 	"runtime"
@@ -31,6 +30,7 @@ func main() {
 	go kademlia.Listen(port)
 	log.Info("Started listening.")
 
+	// If node is not BN start bootstraping process
 	if dns_name != "" {
 		contact := &kademlia.Contact{}
 		contact.Address = dns_name
@@ -39,8 +39,6 @@ func main() {
 		bootstrap := kademlia.Bootstrap{}
 		bootstrap.BootstrapNode = *contact
 		kademlia.SendAndRecievePing(contact, &bootstrap)
-
-		fmt.Println("Message sent.")
 	}
 
 	dRT := kademlia.DisplayRoutingTableClock{}

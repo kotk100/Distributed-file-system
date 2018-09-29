@@ -8,7 +8,7 @@ import (
 )
 
 type NetworkAPI interface {
-	SendPingMessage(originalSender *KademliaID,contact *Contact, messageID messageID) bool
+	SendPingMessage(originalSender *KademliaID, contact *Contact, messageID messageID) bool
 }
 
 type Network struct {
@@ -84,6 +84,7 @@ func (network *Network) GetRPCMessage(message []byte, messageType protocol.RPCMe
 	rpc.Message = message
 	rpc.IPaddress = MyRoutingTable.me.Address
 	rpc.OriginalSender = originalSender
+	rpc.KademliaID = MyRoutingTable.me.ID[:]
 
 	out, err := proto.Marshal(rpc)
 
@@ -98,31 +99,30 @@ func (network *Network) GetRPCMessage(message []byte, messageType protocol.RPCMe
 
 // Send ping message to another node
 //if error false is return
-func (network *Network) SendPingMessage(originalSender *KademliaID,contact *Contact, messageID messageID) bool {
+func (network *Network) SendPingMessage(originalSender *KademliaID, contact *Contact, messageID messageID) bool {
 	// Open connection
 	conn, err := net.Dial("udp", contact.Address)
 	error := false
+
 	if err != nil {
 		log.WithFields(log.Fields{
 			"Error":   err,
 			"Contact": contact,
 		}).Error("Failed to dial UDP address.")
-		error=true
-	}else{
+		error = true
+	} else {
 		// Create ping message
-		// TODO use correct ID
 		ping := &protocol.Ping{}
-		ping.KademliaID = MyRoutingTable.me.ID[:]
 		out, err := proto.Marshal(ping)
+
 		if err != nil {
 			log.WithFields(log.Fields{
 				"Error": err,
 			}).Error("Failed to encode PING message:")
-			error=true
-		}else{
-			//TODO Message ID generation
+			error = true
+		} else {
 			// Wrap ping message and get bytes to send
-			message := network.GetRPCMessage(out, protocol.RPC_PING, messageID[:],originalSender[:])
+			message := network.GetRPCMessage(out, protocol.RPC_PING, messageID[:], originalSender[:])
 			// Write message to the connection (send to other node)
 			n, err := conn.Write(message)
 			if err != nil {
@@ -130,7 +130,7 @@ func (network *Network) SendPingMessage(originalSender *KademliaID,contact *Cont
 					"Error":           err,
 					"Number of bytes": n,
 				}).Error("Failed to write message to connection.")
-				error=true
+				error = true
 			} else {
 				log.Debug("Message writen to conn.")
 			}
@@ -141,7 +141,7 @@ func (network *Network) SendPingMessage(originalSender *KademliaID,contact *Cont
 	return error
 }
 
-func (network *Network) SendFindContactMessage(targetId *KademliaID,originalSender *KademliaID,contact *Contact,contacts []Contact, messageID messageID) bool {
+func (network *Network) SendFindContactMessage(targetId *KademliaID, originalSender *KademliaID, contact *Contact, contacts []Contact, messageID messageID) bool {
 	// Open connection
 	conn, err := net.Dial("udp", contact.Address)
 	error := false
@@ -150,23 +150,23 @@ func (network *Network) SendFindContactMessage(targetId *KademliaID,originalSend
 			"Error":   err,
 			"Contact": contact,
 		}).Error("Failed to dial UDP address.")
-		error=true
-	} else{
-		out, err := createFindNodeToByte(targetId,contacts)
+		error = true
+	} else {
+		out, err := createFindNodeToByte(targetId, contacts)
 		if err != nil {
 			log.WithFields(log.Fields{
 				"Error": err,
 			}).Error("Failed to encode FindNode message:")
-			error=true
-		}else{
-			message := network.GetRPCMessage(out, protocol.RPC_FIND_NODE, messageID[:],originalSender[:])
+			error = true
+		} else {
+			message := network.GetRPCMessage(out, protocol.RPC_FIND_NODE, messageID[:], originalSender[:])
 			n, err := conn.Write(message)
 			if err != nil {
 				log.WithFields(log.Fields{
 					"Error":           err,
 					"Number of bytes": n,
 				}).Error("Failed to write message to connection.")
-				error=true
+				error = true
 			} else {
 				log.Debug("Message writen to conn.")
 			}
@@ -183,5 +183,5 @@ func (network *Network) SendFindDataMessage(hash string) {
 }
 
 func (network *Network) SendStoreMessage(data []byte) {
-	// TODO
+
 }

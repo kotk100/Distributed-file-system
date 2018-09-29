@@ -23,4 +23,6 @@ message RPC {
     string IPaddress = 4;
 
     bytes originalSender = 5;
+
+    bytes KademliaID = 6;
 }

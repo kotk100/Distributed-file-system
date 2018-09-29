@@ -6,16 +6,16 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-type PingBucketRequestExecutor struct{
-	bucket *bucket
-	ch chan *protocol.RPC
-	id messageID
+type PingBucketRequestExecutor struct {
+	bucket  *bucket
+	ch      chan *protocol.RPC
+	id      messageID
 	contact *Contact
 }
 
-func (pingBucketRequestExecutor *PingBucketRequestExecutor) execute(){
+func (pingBucketRequestExecutor *PingBucketRequestExecutor) execute() {
 	// Send ping message to other node
-	error := pingBucketRequestExecutor.bucket.networkAPI.SendPingMessage(MyRoutingTable.me.ID,pingBucketRequestExecutor.contact, pingBucketRequestExecutor.id)
+	error := pingBucketRequestExecutor.bucket.networkAPI.SendPingMessage(MyRoutingTable.me.ID, pingBucketRequestExecutor.contact, pingBucketRequestExecutor.id)
 
 	var element *list.Element
 	for e := pingBucketRequestExecutor.bucket.list.Front(); e != nil; e = e.Next() {
@@ -23,8 +23,10 @@ func (pingBucketRequestExecutor *PingBucketRequestExecutor) execute(){
 
 		if (pingBucketRequestExecutor.contact).ID.Equals(nodeID) {
 			element = e
+			break
 		}
 	}
+
 	// Receive response message through channel
 	if error {
 		log.Info("Error to send bucket ping.")
@@ -34,21 +36,21 @@ func (pingBucketRequestExecutor *PingBucketRequestExecutor) execute(){
 		pingBucketRequestExecutor.bucket.muxAccessBucket.Unlock()
 		pingBucketRequestExecutor.bucket.muxAdd.Unlock()
 		destroyRoutine(pingBucketRequestExecutor.id)
-	}else{
-		timeout:=NewTimeout(pingBucketRequestExecutor.id,pingBucketRequestExecutor.ch)
+	} else {
+		timeout := NewTimeout(pingBucketRequestExecutor.id, pingBucketRequestExecutor.ch)
 		timeOutManager.insertAndStart(timeout)
 		rpc := <-pingBucketRequestExecutor.ch
-		if optionalTimeout:=timeOutManager.tryGetAndRemoveTimeOut(pingBucketRequestExecutor.id);optionalTimeout!=nil{
+		if optionalTimeout := timeOutManager.tryGetAndRemoveTimeOut(pingBucketRequestExecutor.id); optionalTimeout != nil {
 			optionalTimeout.stop()
 		}
 		//timeout
 		pingBucketRequestExecutor.bucket.muxAccessBucket.Lock()
-		if element !=nil{
-			if rpc == nil{
+		if element != nil {
+			if rpc == nil {
 				log.Info("PING bucket time out.")
 				pingBucketRequestExecutor.bucket.list.Remove(element)
 				pingBucketRequestExecutor.bucket.list.PushFront(pingBucketRequestExecutor.bucket.contactToInsert)
-			} else{
+			} else {
 				log.Info("Received PING bucket message response.")
 				pingBucketRequestExecutor.bucket.list.MoveToFront(element)
 			}
@@ -59,10 +61,10 @@ func (pingBucketRequestExecutor *PingBucketRequestExecutor) execute(){
 	}
 }
 
-func (pingBucketRequestExecutor *PingBucketRequestExecutor) setChannel(ch chan *protocol.RPC){
+func (pingBucketRequestExecutor *PingBucketRequestExecutor) setChannel(ch chan *protocol.RPC) {
 	pingBucketRequestExecutor.ch = ch
 }
 
-func (pingBucketRequestExecutor *PingBucketRequestExecutor) setMessageId(id messageID){
+func (pingBucketRequestExecutor *PingBucketRequestExecutor) setMessageId(id messageID) {
 	pingBucketRequestExecutor.id = id
 }

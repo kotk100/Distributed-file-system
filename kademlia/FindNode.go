@@ -4,10 +4,9 @@ import (
 	"./protocol"
 	"github.com/golang/protobuf/proto"
 	log "github.com/sirupsen/logrus"
-
 )
 
-func SendAndReceiveFindNode(callback FindNodeRequestCallback,target *KademliaID,contact *Contact) {
+func SendAndReceiveFindNode(callback FindNodeRequestCallback, target *KademliaID, contact *Contact) {
 	log.WithFields(log.Fields{
 		"Contact": contact,
 	}).Info("Sending FindNode message to node.")
@@ -18,7 +17,7 @@ func SendAndReceiveFindNode(callback FindNodeRequestCallback,target *KademliaID,
 	createRoutine(&findNodeRequestExecutor)
 }
 
-func parseFindNodeRequest(rpc *protocol.RPC) *protocol.FindNode{
+func parseFindNodeRequest(rpc *protocol.RPC) *protocol.FindNode {
 	// Check type is correct
 	if rpc.MessageType != protocol.RPC_FIND_NODE {
 		log.WithFields(log.Fields{
@@ -26,7 +25,7 @@ func parseFindNodeRequest(rpc *protocol.RPC) *protocol.FindNode{
 		}).Error("Wrong message type recieved. FIND_NODE expected.")
 	}
 
-	findNode:=&protocol.FindNode{}
+	findNode := &protocol.FindNode{}
 	if err := proto.Unmarshal(rpc.Message, findNode); err != nil {
 		log.WithFields(log.Fields{
 			"Error": err,
@@ -37,11 +36,11 @@ func parseFindNodeRequest(rpc *protocol.RPC) *protocol.FindNode{
 	return findNode
 }
 
-func createContactFromFindNode(findNode *protocol.FindNode, rpc *protocol.RPC) *Contact {
+func createContactFromFindNode(rpc *protocol.RPC) *Contact {
 	// Create contact
 	contact := &Contact{}
 	contact.Address = rpc.IPaddress
-	contact.ID = KademliaIDFromSlice(findNode.KademliaID)
+	contact.ID = KademliaIDFromSlice(rpc.KademliaID)
 	return contact
 }
 
@@ -53,19 +52,18 @@ func answerFindNodeRequest(msg *protocol.RPC) {
 
 	// Parse findNode message and create contact
 	findNode := parseFindNodeRequest(msg)
-	sender := createContactFromFindNode(findNode, msg)
+	sender := createContactFromFindNode(msg)
 	targetId := KademliaIDFromSlice(findNode.TargetID)
-	contacts := MyRoutingTable.FindClosestContacts(targetId,bucketSize)
+	contacts := MyRoutingTable.FindClosestContacts(targetId, bucketSize)
 	net := &Network{}
-	originalSender :=KademliaIDFromSlice(msg.OriginalSender)
+	originalSender := KademliaIDFromSlice(msg.OriginalSender)
 
-	net.SendFindContactMessage(targetId,originalSender,sender,contacts,id)
+	net.SendFindContactMessage(targetId, originalSender, sender, contacts, id)
 
 	MyRoutingTable.AddContactAsync(*sender)
 }
 
-
-func contactToFindNode_Contact(contacts []Contact) []*protocol.FindNode_Contact{
+func contactToFindNode_Contact(contacts []Contact) []*protocol.FindNode_Contact {
 	findNodeContacts := make([]*protocol.FindNode_Contact, 0)
 	for _, contact := range contacts {
 		protocolFindNodeContact := &protocol.FindNode_Contact{}
@@ -77,7 +75,7 @@ func contactToFindNode_Contact(contacts []Contact) []*protocol.FindNode_Contact{
 	return findNodeContacts
 }
 
-func FindNode_ContactToContact(findNodeContacts []*protocol.FindNode_Contact) []Contact{
+func FindNode_ContactToContact(findNodeContacts []*protocol.FindNode_Contact) []Contact {
 	contacts := make([]Contact, 0)
 	for _, findNodeContact := range findNodeContacts {
 		contact := Contact{}
@@ -89,11 +87,9 @@ func FindNode_ContactToContact(findNodeContacts []*protocol.FindNode_Contact) []
 	return contacts
 }
 
-
-func createFindNodeToByte(targetId *KademliaID,contacts []Contact) ([]byte,error){
-	findNode:=&protocol.FindNode{}
+func createFindNodeToByte(targetId *KademliaID, contacts []Contact) ([]byte, error) {
+	findNode := &protocol.FindNode{}
 	findNode.TargetID = targetId[:]
-	findNode.KademliaID = MyRoutingTable.me.ID[:]
 	findNode.Contacts = contactToFindNode_Contact(contacts)
-	return  proto.Marshal(findNode)
+	return proto.Marshal(findNode)
 }

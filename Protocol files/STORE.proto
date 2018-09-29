@@ -1,0 +1,10 @@
+syntax = "proto3";
+package protocol;
+
+message Store {
+    bytes fileHash = 1;
+    bytes FileSize = 2;
+
+    // Filename with a password <file_hash>:<hash_password>:<salt>:<PIN_boolean>
+    // Filename wothout a password <file_hash>:::<PIN_boolean>
+}

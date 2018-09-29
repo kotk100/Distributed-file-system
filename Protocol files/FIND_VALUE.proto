@@ -1,7 +1,7 @@
 syntax = "proto3";
 package protocol;
 
-message FindNode {
+message FindValue {
 
     message Contact{
          string IPaddress = 1;
@@ -11,4 +11,7 @@ message FindNode {
     repeated Contact contacts = 1;
 
     bytes targetID = 2;
+
+    bytes password = 3;
+    bytes fileHash = 4;
 }

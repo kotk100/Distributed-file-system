@@ -1,8 +1,7 @@
 FROM larjim/kademlialab:latest
 
-
-
 RUN mkdir /usr/bin/DFS
+RUN mkdir /var/File_storage/
 
 ADD ./Output/DFS_linux_linux /usr/bin/DFS/DFS_linux
 

@@ -5,19 +5,16 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-type PingCallback interface {
-	pingResult(receivedAnswer bool)
+type StoreRequestExecutor struct {
+	ch      chan *protocol.RPC
+	id      messageID
+	store   *Store
+	contact Contact
 }
 
-type PingRequestExecutor struct {
-	ch           chan *protocol.RPC
-	id           messageID
-	contact      *Contact
-	pingCallback PingCallback
-}
+func (storeRequestExecutor *StoreRequestExecutor) execute() {
+	// Send store message to other node
 
-func (requestExecutorPing *PingRequestExecutor) execute() {
-	// Send ping message to other node
 	var network Network
 	error := network.SendPingMessage(MyRoutingTable.me.ID, requestExecutorPing.contact, requestExecutorPing.id)
 
@@ -31,7 +28,7 @@ func (requestExecutorPing *PingRequestExecutor) execute() {
 		timeOutManager.insertAndStart(timeout)
 		// Recieve response message through channel
 		rpc := <-requestExecutorPing.ch
-		if optionalTimeout:=timeOutManager.tryGetAndRemoveTimeOut(requestExecutorPing.id);optionalTimeout!=nil{
+		if optionalTimeout := timeOutManager.tryGetAndRemoveTimeOut(requestExecutorPing.id); optionalTimeout != nil {
 			optionalTimeout.stop()
 		}
 		log.Info("Received PING message response.")
@@ -61,10 +58,10 @@ func (requestExecutorPing *PingRequestExecutor) execute() {
 	}
 }
 
-func (requestExecutorPing *PingRequestExecutor) setChannel(ch chan *protocol.RPC) {
-	requestExecutorPing.ch = ch
+func (storeRequestExecutor *StoreRequestExecutor) setChannel(ch chan *protocol.RPC) {
+	storeRequestExecutor.ch = ch
 }
 
-func (requestExecutorPing *PingRequestExecutor) setMessageId(id messageID) {
-	requestExecutorPing.id = id
+func (storeRequestExecutor *StoreRequestExecutor) setMessageId(id messageID) {
+	storeRequestExecutor.id = id
 }

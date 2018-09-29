@@ -1,0 +1,12 @@
+syntax = "proto3";
+package protocol;
+
+message StoreAnswer {
+    enum storeAnswer {
+        OK = 0; // Send file or storing succesful
+        ALREADY_STORED = 1;
+        ERROR = 2;
+    }
+    storeAnswer answer = 1;
+
+}
