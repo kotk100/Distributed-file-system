@@ -6,11 +6,6 @@ type DisplayRoutingTableClock struct {
 }
 
 func (displayRoutingTableClock *DisplayRoutingTableClock) Display() {
-	for {
-		select {
-		case <-time.After(60 * time.Second):
-			MyRoutingTable.Print()
-			break
-		}
-	}
+	time.Sleep(100 * time.Second)
+	MyRoutingTable.Print()
 }

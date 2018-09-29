@@ -10,15 +10,13 @@ services:
     depends_on:
       - "bootstrapingNode"
     deploy:
-      replicas: 5
-#        resources:
-#           limits:
-#              cpus: "0.1"
-#              memory: 50M
+      replicas: 100
+      resources:
+        limits:
+          cpus: "0.1"
+          memory: 50M
       restart_policy:
         condition: on-failure
-#    ports:
-#      - "4000:80"
     networks:
     - kademlia_network
 
@@ -36,8 +34,6 @@ services:
       #              memory: 50M
       restart_policy:
         condition: on-failure
-  #    ports:
-  #      - "4000:80"
     networks:
       - kademlia_network
 
@@ -57,3 +53,7 @@ services:
 
 networks:
   kademlia_network:
+    ipam:
+      driver: default
+      config:
+        - subnet: 10.4.0.0/16

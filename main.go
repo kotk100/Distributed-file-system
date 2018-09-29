@@ -8,14 +8,12 @@ import (
 	"runtime"
 )
 
-
 func init() {
 	// Log output
 	log.SetOutput(os.Stdout)
 	// Only log the warning severity or above.
 	log.SetLevel(log.InfoLevel)
 }
-
 
 func main() {
 	//kademlia.Listen("10.0.0.1", 4658)
@@ -37,15 +35,15 @@ func main() {
 		contact := &kademlia.Contact{}
 		contact.Address = dns_name
 
-
-		bootstrap:=kademlia.Bootstrap{}
+		// Bootstap this node onto the network
+		bootstrap := kademlia.Bootstrap{}
 		bootstrap.BootstrapNode = *contact
-		kademlia.SendAndRecievePing(contact,&bootstrap)
+		kademlia.SendAndRecievePing(contact, &bootstrap)
 
 		fmt.Println("Message sent.")
 	}
 
-	dRT:=kademlia.DisplayRoutingTableClock{}
+	dRT := kademlia.DisplayRoutingTableClock{}
 	dRT.Display()
 
 	// Wait forever
