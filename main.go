@@ -50,7 +50,7 @@ func main() {
 	for scanner.Scan() {
 		buffer := scanner.Bytes()
 
-		store := kademlia.CreateNewStore(&buffer, nil)
+		store := kademlia.CreateNewStore(&buffer, nil, "example.txt")
 		store.StartStore()
 	}
 

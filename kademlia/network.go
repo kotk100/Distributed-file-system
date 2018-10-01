@@ -336,7 +336,7 @@ func (network *Network) SendFile(filehash *[20]byte, contact *Contact, port stri
 	sendBuffer := make([]byte, BUFFERSIZE)
 	var totalReadBytes int64
 
-	for fileLenght < totalReadBytes {
+	for fileLenght > totalReadBytes {
 		readBytes, err := fileReader.ReadFileChunk(&sendBuffer)
 		totalReadBytes += int64(readBytes)
 
@@ -404,9 +404,16 @@ func (network *Network) RecieveFile(port string, filename string, contact *Conta
 
 	// Open file for writing
 	fileWriter := createFileWriter(filename)
+	if fileWriter == nil {
+		log.WithFields(log.Fields{
+			"filename": filename,
+		}).Error("Failed to create file for writing.")
+		return true
+	}
+
 	defer fileWriter.close()
 
-	var receivedBytes int64
+	var receivedBytes int64 = 0
 	buffer := make([]byte, BUFFERSIZE)
 
 	for {

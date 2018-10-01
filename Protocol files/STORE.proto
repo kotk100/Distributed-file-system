@@ -5,6 +5,6 @@ message Store {
     string filename = 1;
     int64 fileSize = 2;
 
-    // Filename with a password <file_hash>:<hash_password>:<salt>:<PIN_boolean>
-    // Filename wothout a password <file_hash>:::<PIN_boolean>
+    // Filename with a password <file_hash>:<hash_password>:<original_filename>:<PIN_boolean>
+    // Filename wothout a password <file_hash>::<original_filename>:<PIN_boolean>
 }

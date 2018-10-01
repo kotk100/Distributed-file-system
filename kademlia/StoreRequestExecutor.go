@@ -102,6 +102,7 @@ func (storeRequestExecutor *StoreRequestExecutor) execute() {
 						// TODO what hapens if a file cant be stored on node? (for example if there is not enough space)
 						log.WithFields(log.Fields{
 							"Other node": other,
+							"FileName":   storeRequestExecutor.store.filename,
 						}).Error("Failed to store file on node.")
 					default:
 						log.WithFields(log.Fields{
@@ -116,6 +117,7 @@ func (storeRequestExecutor *StoreRequestExecutor) execute() {
 				// TODO what hapens if a file cant be stored on node? (for example if there is not enough space)
 				log.WithFields(log.Fields{
 					"Other node": other,
+					"FileName":   storeRequestExecutor.store.filename,
 				}).Error("Failed to store file on node.")
 			default:
 				log.WithFields(log.Fields{

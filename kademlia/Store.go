@@ -26,7 +26,7 @@ func handleError(lenght int, err error) {
 }
 
 // Creates a filename under which the file will be stored
-func (store *Store) createFilename(file *[]byte, password []byte, pinned bool) {
+func (store *Store) createFilename(file *[]byte, password []byte, pinned bool, originalFilename string) {
 	hash := strings.Builder{}
 
 	str := hashToString(store.filehash[:])
@@ -38,6 +38,9 @@ func (store *Store) createFilename(file *[]byte, password []byte, pinned bool) {
 		str = hashToString(passHash[:])
 		handleError(hash.WriteString(str))
 	}
+
+	handleError(hash.WriteString(":"))
+	handleError(hash.WriteString(originalFilename))
 
 	// File is not pinned by default
 	if pinned {
@@ -54,10 +57,10 @@ func createFileHash(file *[]byte) *[20]byte {
 	return &hash
 }
 
-func CreateNewStore(file *[]byte, password []byte) *Store {
+func CreateNewStore(file *[]byte, password []byte, originalFilename string) *Store {
 	store := &Store{}
 	store.filehash = createFileHash(file)
-	store.createFilename(file, password, false)
+	store.createFilename(file, password, false, originalFilename)
 	store.file = file
 
 	return store
@@ -84,9 +87,12 @@ func (store *Store) StartStore() {
 		}).Error("Failed writing to file.")
 	}
 
+	target := Contact{}
+	target.ID = KademliaIDFromSlice(store.filehash[:])
+
 	// Find k closest nodes to store file on
 	// Returns k closest to callback processKClosest in this file
-	lookupNode := NewLookupNode(MyRoutingTable.GetMe(), store)
+	lookupNode := NewLookupNode(target, store)
 	lookupNode.Start()
 }
 
