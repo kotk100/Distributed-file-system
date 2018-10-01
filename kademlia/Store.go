@@ -66,6 +66,10 @@ func CreateNewStore(file *[]byte, password []byte, originalFilename string) *Sto
 	return store
 }
 
+func (store *Store) GetHashFile() []byte{
+	return store.filehash[:]
+}
+
 func (store *Store) StartStore() {
 	log.Info("Started STORE procedure.")
 
@@ -282,6 +286,20 @@ func checkFileExists(filename string) bool {
 	s := strings.Split(filename, ":")
 	filehash := s[0]
 	return checkFileExistsHash(filehash)
+}
+
+func getStringFileByHash(fileHash string) string{
+	matches, err := filepath.Glob("/var/File_storage/" + fileHash + ":*")
+	if err != nil {
+		log.WithFields(log.Fields{
+			"filehash": fileHash,
+		}).Error("Error getting filenames.")
+		return ""
+	}
+	if len(matches)==0{
+		return ""
+	}
+	return matches[0]
 }
 
 func checkFileExistsHash(filehash string) bool {

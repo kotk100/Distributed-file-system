@@ -15,6 +15,7 @@ message RPC {
         PIN = 4;
         UNPIN = 5;
         STORE_ANSWER = 6;
+        SEND_FILE = 7;
     }
     messageTYPE messageType = 2;
 

@@ -3,16 +3,19 @@ package kademlia
 import (
 	log "github.com/sirupsen/logrus"
 	"sync"
+	"./protocol"
 )
 
+//TODO : When an iterativeFindValue succeeds, the initiator must store the key/value pair at the closest node seen which did not return the value.
+
 type LookupValueCallback interface {
-	contactWithFile(contact Contact)
+	contactWithFile(contact Contact,findValueRpc *protocol.FindValue)
 	noContactWithFileFound(contacts []Contact)
 }
 
 type FindValueRequestCallback interface {
 	errorRequest(contact Contact)
-	successRequest(contact Contact, contacts []Contact, haveTheFile bool)
+	successRequest(contact Contact, contacts []Contact,findValueRpc *protocol.FindValue)
 }
 
 type LookupValue struct {
@@ -34,20 +37,24 @@ func NewLookupValue(fileHash []byte, lookupValueCallback LookupValueCallback) *L
 	return lookup
 }
 
+func (lookupValue *LookupValue) start(){
+	lookupValue.lookupNode.Start()
+}
+
 func (lookupValue *LookupValue) errorRequest(contact Contact) {
 	lookupValue.lookupNode.errorRequest(contact)
 }
 
-func (lookupValue *LookupValue) successRequest(contact Contact, contacts []Contact, haveTheFile bool) {
+func (lookupValue *LookupValue) successRequest(contact Contact, contacts []Contact, findValueRpc *protocol.FindValue) {
 	lookupValue.muxSuccessRequest.Lock()
 	if ! lookupValue.hasBeenFound {
-		if haveTheFile {
+		if findValueRpc.HaveTheFile {
 			log.WithFields(log.Fields{
 				"Contact":  contact,
 			}).Info("Found contact which contains the file")
 			lookupValue.lookupNode.stop()
 			lookupValue.hasBeenFound = true
-			(*lookupValue.lookupValueCallback).contactWithFile(contact)
+			(*lookupValue.lookupValueCallback).contactWithFile(contact,findValueRpc)
 		} else {
 			lookupValue.lookupNode.successRequest(contact, contacts)
 		}
@@ -64,5 +71,9 @@ func (lookupValue *LookupValue) processKClosest(KClosestOfTarget []LookupNodeCon
 }
 
 func (lookupValue *LookupValue) sendLookNode(target *KademliaID, contact *Contact) {
+	log.WithFields(log.Fields{
+		"lookupValue.fileHash":  lookupValue.fileHash,
+		"lookupValue.fileHash string ":hashToString(lookupValue.fileHash),
+	}).Info("Send find value")
 	SendAndReceiveFindValue(lookupValue, lookupValue.fileHash, contact)
 }

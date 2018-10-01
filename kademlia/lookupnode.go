@@ -98,21 +98,11 @@ func (lookupNode *LookupNode) stop(){
 func (lookupNode *LookupNode) errorRequest(contactAsked Contact) {
 	lookupNode.changeLookupContactState(contactAsked, FAILED)
 	lookupNode.cleanShortList()
-	lookupNode.sendFindNodeToRandomContact()
 }
 
 func random(min, max int) int {
 	rand.Seed(time.Now().Unix())
 	return rand.Intn(max-min) + min
-}
-
-func (lookupNode *LookupNode) sendFindNodeToRandomContact() {
-	lookupNode.mux.Lock()
-	myrand := random(0, len(lookupNode.shortlist)-1)
-	contactToAsk := lookupNode.shortlist[myrand]
-	lookupNode.changeLookupNodeContactState(&contactToAsk, ASKING)
-	lookupNode.mux.Unlock()
-	lookupNode.sendLookNode(lookupNode.target.ID, &contactToAsk.contact)
 }
 
 func (lookupNode *LookupNode) sendLookNode(target *KademliaID, contact *Contact){
@@ -137,7 +127,7 @@ func (lookupNode *LookupNode) sendFindNodeRequest() {
 		log.WithFields(log.Fields{
 			"contactToAsk": contactToAsk,
 		}).Debug("Send find node request from lookup node")
-		lookupNode.sendLookNode(lookupNode.target.ID, &contactToAsk.contact)
+		(*lookupNode.lookNodeSender).sendLookNode(lookupNode.target.ID, &contactToAsk.contact)
 	} else {
 		lookupNode.mux.Unlock()
 	}

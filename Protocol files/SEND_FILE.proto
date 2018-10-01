@@ -1,0 +1,16 @@
+syntax = "proto3";
+package protocol;
+
+
+message SendFile {
+
+    string IPaddress = 1;
+
+    bytes originalSender = 2;
+
+    bytes KademliaID = 3;
+
+    bytes fileHash = 4;
+
+    int64 fileSize = 5;
+}

@@ -4,6 +4,7 @@ import (
 	"./protocol"
 	"github.com/golang/protobuf/proto"
 	log "github.com/sirupsen/logrus"
+	"os"
 )
 
 func SendAndReceiveFindValue(callback FindValueRequestCallback, fileHash []byte, contact *Contact) {
@@ -50,14 +51,46 @@ func answerFindValueRequest(msg *protocol.RPC) {
 	originalSender := KademliaIDFromSlice(msg.OriginalSender)
 
 	haveTheFile := false
-	contacts := make([]Contact,0)
+	contacts := make([]Contact, 0)
+	fileName := ""
+	var fileSize int64 = 0
+
+	log.WithFields(log.Fields{
+		"filehash":        findValue.FileHash,
+		"filehash String": hashToString(findValue.FileHash),
+	}).Info("Receive FindValue request")
+
 	//check if node has the file set boolean
 	if checkFileExistsHash(hashToString(findValue.FileHash)) {
-		haveTheFile = true
+
+		stringPath := getStringFileByHash(hashToString(findValue.FileHash))
+		file, error := os.Open(stringPath)
+		if error != nil {
+			log.WithFields(log.Fields{
+				"file string": stringPath,
+			}).Info("Error open file")
+		} else {
+			fileInfo, error := file.Stat()
+			if error != nil {
+				log.WithFields(log.Fields{
+					"file string": stringPath,
+				}).Info("Error to get file info")
+			} else {
+				fileName = fileInfo.Name()
+				fileSize = fileInfo.Size()
+				haveTheFile = true
+			}
+		}
 	} else {
 		contacts = MyRoutingTable.FindClosestContacts(fileHashKademlia, bucketSize)
 	}
-	net.SendFindDataMessage(findValue.FileHash, sender, contacts, id, originalSender, haveTheFile)
+
+	log.WithFields(log.Fields{
+		"haveTheFile": haveTheFile,
+		"fileName":    fileName,
+		"fileSize":    fileSize,
+	}).Info("Response FindValue request")
+	net.SendFindDataMessage(findValue.FileHash, sender, contacts, id, originalSender, haveTheFile, fileName, fileSize)
 	MyRoutingTable.AddContactAsync(*sender)
 }
 
@@ -92,10 +125,12 @@ func FindValue_ContactToContact(findValueContacts []*protocol.FindValue_Contact)
 	return contacts
 }
 
-func createFindValueToByte(fileHash []byte, contacts []Contact, haveTheFile bool) ([]byte, error) {
+func createFindValueToByte(fileHash []byte, contacts []Contact, haveTheFile bool, fileName string, fileSize int64) ([]byte, error) {
 	findValue := &protocol.FindValue{}
 	findValue.FileHash = fileHash
 	findValue.Contacts = contactToFindValue_Contact(contacts)
 	findValue.HaveTheFile = haveTheFile
+	findValue.FileName = fileName
+	findValue.FileSize = fileSize
 	return proto.Marshal(findValue)
 }

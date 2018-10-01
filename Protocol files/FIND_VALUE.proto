@@ -13,4 +13,8 @@ message FindValue {
     bytes fileHash = 2;
 
     bool HaveTheFile = 3;
+
+    string fileName = 4;
+
+    int64 fileSize = 5;
 }

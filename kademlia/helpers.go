@@ -85,6 +85,8 @@ func sendMessageToRoutine(msg *protocol.RPC) {
 			//TODO
 		case protocol.RPC_UNPIN:
 			//TODO
+		case protocol.RPC_SEND_FILE:
+			go answerSendFileRequest(msg)
 		default:
 			log.WithFields(log.Fields{
 				"Message": msg,

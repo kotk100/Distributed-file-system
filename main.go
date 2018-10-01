@@ -6,6 +6,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"os"
 	"runtime"
+	"time"
 )
 
 func init() {
@@ -52,6 +53,15 @@ func main() {
 
 		store := kademlia.CreateNewStore(&buffer, nil, "example.txt")
 		store.StartStore()
+
+		time.Sleep(10 * time.Second)
+
+		testFindValue:=kademlia.NewTestLookupValue(store.GetHashFile())
+		testFindValue.StartTest()
+		//check node if is not contains file
+		//if not launch find value
+		//display contact which contain file
+
 	}
 
 	// Wait forever

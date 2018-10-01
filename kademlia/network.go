@@ -4,6 +4,7 @@ import (
 	"./protocol"
 	"github.com/golang/protobuf/proto"
 	log "github.com/sirupsen/logrus"
+	"math/rand"
 	"net"
 	"strings"
 )
@@ -179,7 +180,7 @@ func (network *Network) SendFindContactMessage(targetId *KademliaID, originalSen
 	return error
 }
 
-func (network *Network) SendFindDataMessage(fileHash []byte, contact *Contact, contacts []Contact, messageID messageID, originalSender *KademliaID, haveTheFile bool) bool {
+func (network *Network) SendFindDataMessage(fileHash []byte, contact *Contact, contacts []Contact, messageID messageID, originalSender *KademliaID, haveTheFile bool, fileName string, fileSize int64) bool {
 	// Open connection
 	conn, err := net.Dial("udp", contact.Address)
 	error := false
@@ -190,7 +191,7 @@ func (network *Network) SendFindDataMessage(fileHash []byte, contact *Contact, c
 		}).Error("Failed to dial UDP address.")
 		error = true
 	} else {
-		out, err := createFindValueToByte(fileHash, contacts, haveTheFile)
+		out, err := createFindValueToByte(fileHash, contacts, haveTheFile, fileName, fileSize)
 		if err != nil {
 			log.WithFields(log.Fields{
 				"Error": err,
@@ -463,4 +464,135 @@ func (network *Network) RecieveFile(port string, filename string, contact *Conta
 		"Filename": filename,
 	}).Info("Received and stored file.")
 	return false
+}
+
+func (network *Network) retrieveFile(port string,fileHash []byte, filename string, contact *Contact, fileSize int64, originalSender *[]byte) bool {
+	server, err := net.Listen("tcp", port)
+
+	if err != nil {
+		log.WithFields(log.Fields{
+			"Error": err,
+		}).Error("Failed to start listening for a TCP connection.")
+
+		return true
+	}
+
+	log.WithFields(log.Fields{
+		"Port":    port,
+		"Contact": contact,
+	}).Debug("Started listening for a TCP connection.")
+
+	// Close connection when exiting function
+	defer server.Close()
+
+	error := network.sendSendFileRequest(contact,fileHash,fileSize)
+	if error {
+		log.WithFields(log.Fields{
+			"Contact": contact,
+		}).Error("Failed to send SendFile request.")
+
+		return true
+	}
+
+	// Connect to incoming TCP connection
+	connection, err := server.Accept()
+	if err != nil {
+		log.WithFields(log.Fields{
+			"Error": err,
+		}).Error("Failed to accept a TCP connection.")
+
+		return true
+	}
+	log.WithFields(log.Fields{
+		"Port":    port,
+		"Contact": contact,
+	}).Debug("Client connected.")
+
+	var receivedBytes int64 = 0
+	buffer := make([]byte, BUFFERSIZE)
+
+	for {
+		// Read packet
+		n, err := connection.Read(buffer)
+		if err != nil {
+			log.WithFields(log.Fields{
+				"Error":      err,
+				"bytes read": n,
+			}).Error("Failed to read bytes from TCP connection.")
+
+			return true
+		}
+		log.WithFields(log.Fields{
+			"fileSize":   fileSize,
+			"receivedBytes": receivedBytes,
+		}).Info("receive send file answer from client")
+		// Store last part of file
+		if (fileSize - receivedBytes) < BUFFERSIZE {
+			// TODO make sure that correct part of slice is used
+			endBuffer := buffer[0:(fileSize - receivedBytes)]
+			log.WithFields(log.Fields{
+				"value": string(endBuffer),
+			}).Info("RECEIVED FILE VALUE.------")
+			break
+		} else {
+			log.WithFields(log.Fields{
+				"value": string(buffer),
+			}).Info("RECEIVED FILE VALUE.------")
+			receivedBytes += BUFFERSIZE
+			if fileSize == receivedBytes {
+				break
+			}
+		}
+	}
+
+	log.WithFields(log.Fields{
+		"Filename": filename,
+	}).Info("END FILE VALUE-----")
+	return false
+}
+
+func (network *Network) sendSendFileRequest(contact *Contact, fileHash []byte,fileSize int64) bool {
+	// Open connection
+	conn, err := net.Dial("udp", contact.Address)
+	error := false
+	if err != nil {
+		log.WithFields(log.Fields{
+			"Error":   err,
+			"Contact": contact,
+		}).Error("Failed to dial UDP address.")
+		error = true
+	} else {
+		sendFile := &protocol.SendFile{}
+		sendFile.FileHash = fileHash
+		sendFile.IPaddress = MyRoutingTable.me.Address
+		sendFile.KademliaID = MyRoutingTable.me.ID[:]
+		sendFile.OriginalSender = MyRoutingTable.me.ID[:]
+		sendFile.FileSize=fileSize
+		out, err := proto.Marshal(sendFile)
+		if err != nil {
+			log.WithFields(log.Fields{
+				"Error": err,
+			}).Error("Failed to create send file request.")
+			error = true
+		} else {
+			messageID := messageID{}
+			for i := 0; i < 20; i++ {
+				messageID[i] = uint8(rand.Intn(256))
+			}
+			message := network.GetRPCMessage(out, protocol.RPC_SEND_FILE, messageID[:] , MyRoutingTable.me.ID[:])
+			n, err := conn.Write(message)
+			if err != nil {
+				log.WithFields(log.Fields{
+					"Error":           err,
+					"Number of bytes": n,
+				}).Error("Failed to write message to connection.")
+				error = true
+			} else {
+				log.Info("Send file request sent.")
+			}
+		}
+		// Close connection
+		conn.Close()
+	}
+	return error
 }

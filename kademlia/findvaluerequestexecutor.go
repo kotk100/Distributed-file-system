@@ -21,7 +21,9 @@ func (findValueRequestExecutor *FindValueRequestExecutor) execute() {
 		make([]Contact, 0),
 		findValueRequestExecutor.id,
 		MyRoutingTable.me.ID,
-		false)
+		false,
+		"",
+		0)
 	//if the channel return nil then there was error
 	if error {
 		log.Info("Error to send FindValue message.")
@@ -48,7 +50,7 @@ func (findValueRequestExecutor *FindValueRequestExecutor) execute() {
 				findValue := parseFindValueRequest(rpc)
 				contactSender := createContactFromRPC(rpc)
 				contacts := FindValue_ContactToContact(findValue.Contacts)
-				(*findValueRequestExecutor.callback).successRequest(*contactSender, contacts, findValue.HaveTheFile)
+				(*findValueRequestExecutor.callback).successRequest(*contactSender, contacts, findValue)
 
 				MyRoutingTable.AddContactAsync(*contactSender)
 			}
