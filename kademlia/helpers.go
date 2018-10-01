@@ -7,14 +7,12 @@ import (
 	"sync"
 )
 
-type rpcFunc func(chan *protocol.RPC, messageID, *Contact)
 type messageID [20]byte
 
 var m = make(map[messageID]chan *protocol.RPC)
 var mutexMap sync.Mutex
 
 // Create a routine for the provided function and a way to send message responses back to it
-// TODO logging
 func createRoutine(executor RequestExecutor) {
 	// Create channel for sending RPC responses
 	c := make(chan *protocol.RPC)
@@ -48,7 +46,6 @@ func destroyRoutine(id messageID) {
 }
 
 func sendMessageToRoutine(msg *protocol.RPC) {
-	// TODO what if message is not a response
 	// Read messageID from message
 	id := messageID{}
 	copy(id[:], msg.MessageID[0:20])

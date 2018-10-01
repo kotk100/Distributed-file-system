@@ -20,7 +20,8 @@ type Store struct {
 func handleError(lenght int, err error) {
 	if err != nil {
 		log.WithFields(log.Fields{
-			"Error": err,
+			"lenght bytes": lenght,
+			"Error":        err,
 		}).Error("Error creating filename.")
 	}
 }
@@ -70,6 +71,7 @@ func (store *Store) StartStore() {
 	log.Info("Started STORE procedure.")
 
 	// TODO Store file localy with pin set, should we pin file on publisher?
+	// TODO how to store file on first node that is the publisher so that the whole file doesn't have to be in memory
 	filename := store.filename[:len(store.filename)-1] + "1"
 
 	fileWriter := createFileWriter(filename)
@@ -175,10 +177,10 @@ func answerStoreRequest(rpc *protocol.RPC) {
 	} else {
 		// Start listening on port and save file after connecting
 		portStr := os.Getenv("FILE_TRANSFER_PORT")
-		error := network.RecieveFile(portStr, store.Filename, other, id, store.FileSize, &rpc.OriginalSender)
+		err := network.RecieveFile(portStr, store.Filename, other, id, store.FileSize, &rpc.OriginalSender)
 
 		// Send confirmation if file was saved correctly
-		if error {
+		if err {
 			log.WithFields(log.Fields{
 				"Contact": other,
 			}).Error("Failed to receive file and save it.")
@@ -217,7 +219,6 @@ func (fileWriter *FileWriter) close() {
 	fileWriter.file.Close()
 }
 
-// TODO how to do it on first node that is the publisher?
 // Writes a chunk of the file returning error
 func (fileWriter *FileWriter) StoreFileChunk(file *[]byte) bool {
 	n, err := fileWriter.file.Write(*file)
