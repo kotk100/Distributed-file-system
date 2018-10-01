@@ -29,13 +29,13 @@ func handleError(lenght int, err error) {
 func (store *Store) createFilename(file *[]byte, password []byte, pinned bool) {
 	hash := strings.Builder{}
 
-	str := hex.EncodeToString((*store.filehash)[:])
+	str := hashToString(store.filehash[:])
 	handleError(hash.WriteString(str))
 	handleError(hash.WriteString(":"))
 
 	if password != nil {
 		passHash := sha1.Sum(password)
-		str = hex.EncodeToString(passHash[:])
+		str = hashToString(passHash[:])
 		handleError(hash.WriteString(str))
 	}
 
@@ -268,10 +268,17 @@ func createFileReader(filehash *[20]byte) *FileReader {
 	return reader
 }
 
+func hashToString(hash []byte) string{
+	return hex.EncodeToString(hash)
+}
+
 func checkFileExists(filename string) bool {
 	s := strings.Split(filename, ":")
 	filehash := s[0]
+	return checkFileExistsHash(filehash)
+}
 
+func checkFileExistsHash(filehash string) bool {
 	// Find file by the hash if it exists
 	matches, err := filepath.Glob("/var/File_storage/" + filehash + ":*")
 	if err != nil {

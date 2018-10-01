@@ -147,10 +147,14 @@ func (lookupNode *LookupNode) sendFindNodeRequest() {
 func (lookupNode *LookupNode) handleNewContact(contact Contact) {
 	contact.distance = contact.ID.CalcDistance(lookupNode.target.ID)
 	lookupNode.mux.Lock()
-	if !lookupNode.contactIsInShortlist(&contact) {
+	if !lookupNode.isItMe(&contact) && !lookupNode.contactIsInShortlist(&contact) {
 		lookupNode.updateShortlistIfCloser(&contact)
 	}
 	lookupNode.mux.Unlock()
+}
+
+func (lookupNode *LookupNode) isItMe(contact *Contact) bool{
+	return MyRoutingTable.me.ID.Equals(contact.ID)
 }
 
 func (lookupNode *LookupNode) contactIsInShortlist(contact *Contact) bool {
