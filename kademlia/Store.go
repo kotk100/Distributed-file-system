@@ -165,11 +165,11 @@ func answerStoreRequest(rpc *protocol.RPC) {
 
 	// Check if file already exsists
 	if checkFileExists(store.Filename) {
-		errorStoreAnswerWraper(network.SendStoreAnswerMessage(protocol.StoreAnswer_ALREADY_STORED, other, id))
+		errorStoreAnswerWraper(network.SendStoreAnswerMessage(protocol.StoreAnswer_ALREADY_STORED, other, id, &rpc.OriginalSender))
 	} else {
 		// Start listening on port and save file after connecting
 		portStr := os.Getenv("FILE_TRANSFER_PORT")
-		error := network.RecieveFile(portStr, store.Filename, other, id, store.FileSize)
+		error := network.RecieveFile(portStr, store.Filename, other, id, store.FileSize, &rpc.OriginalSender)
 
 		// Send confirmation if file was saved correctly
 		if error {
@@ -177,9 +177,9 @@ func answerStoreRequest(rpc *protocol.RPC) {
 				"Contact": other,
 			}).Error("Failed to receive file and save it.")
 
-			errorStoreAnswerWraper(network.SendStoreAnswerMessage(protocol.StoreAnswer_ERROR, other, id))
+			errorStoreAnswerWraper(network.SendStoreAnswerMessage(protocol.StoreAnswer_ERROR, other, id, &rpc.OriginalSender))
 		} else {
-			errorStoreAnswerWraper(network.SendStoreAnswerMessage(protocol.StoreAnswer_OK, other, id))
+			errorStoreAnswerWraper(network.SendStoreAnswerMessage(protocol.StoreAnswer_OK, other, id, &rpc.OriginalSender))
 		}
 	}
 }
@@ -234,11 +234,10 @@ type FileReader struct {
 
 // Open file for writing
 func createFileReader(filehash *[20]byte) *FileReader {
-	hash := strings.Builder{}
-	handleError(hash.Write((*filehash)[:]))
+	str := hex.EncodeToString((*filehash)[:])
 
 	// Find file by the hash if it exists
-	matches, err := filepath.Glob("/var/File_storage/" + hash.String() + ":*")
+	matches, err := filepath.Glob("/var/File_storage/" + str + ":*")
 	if err != nil {
 		log.WithFields(log.Fields{
 			"filehash": filehash,

@@ -16,7 +16,8 @@ type StoreRequestExecutor struct {
 func (storeRequestExecutor *StoreRequestExecutor) execute() {
 	// Send store message to other node
 	var network Network
-	error := network.SendStoreMessage(storeRequestExecutor.store.filename, int64(len(*storeRequestExecutor.store.file)), &storeRequestExecutor.contact, storeRequestExecutor.id)
+	senderID := MyRoutingTable.GetMe().ID[:]
+	error := network.SendStoreMessage(storeRequestExecutor.store.filename, int64(len(*storeRequestExecutor.store.file)), &storeRequestExecutor.contact, storeRequestExecutor.id, &senderID)
 	log.WithFields(log.Fields{
 		"Contact":  storeRequestExecutor.contact,
 		"Filename": storeRequestExecutor.store.filename,
@@ -41,7 +42,7 @@ func (storeRequestExecutor *StoreRequestExecutor) execute() {
 			log.WithFields(log.Fields{
 				"Contact":  storeRequestExecutor.contact,
 				"Filename": storeRequestExecutor.store.filename,
-			}).Info("Received STORE message response.")
+			}).Info("Received STORE ANSWER message response.")
 
 			// Parse store message and create contact for adding to routing table
 			store := parseStoreAnswerRPC(rpc)

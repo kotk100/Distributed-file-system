@@ -216,7 +216,7 @@ func (network *Network) SendFindDataMessage(fileHash []byte, contact *Contact, c
 	return error
 }
 
-func (network *Network) SendStoreMessage(filename string, lenght int64, contact *Contact, id messageID) bool {
+func (network *Network) SendStoreMessage(filename string, lenght int64, contact *Contact, id messageID, originalSender *[]byte) bool {
 	// Open connection
 	conn, err := net.Dial("udp", contact.Address)
 	error := false
@@ -239,7 +239,7 @@ func (network *Network) SendStoreMessage(filename string, lenght int64, contact 
 			error = true
 		} else {
 			// Wrap store message and get bytes to send
-			message := network.GetRPCMessage(out, protocol.RPC_STORE, id[:], MyRoutingTable.GetMe().ID[:])
+			message := network.GetRPCMessage(out, protocol.RPC_STORE, id[:], *originalSender)
 			// Write message to the connection (send to other node)
 			n, err := conn.Write(message)
 			if err != nil {
@@ -259,7 +259,7 @@ func (network *Network) SendStoreMessage(filename string, lenght int64, contact 
 	return error
 }
 
-func (network *Network) SendStoreAnswerMessage(answer protocol.StoreAnswerStoreAnswer, contact *Contact, id messageID) bool {
+func (network *Network) SendStoreAnswerMessage(answer protocol.StoreAnswerStoreAnswer, contact *Contact, id messageID, originalSender *[]byte) bool {
 	// Open connection
 	conn, err := net.Dial("udp", contact.Address)
 	error := false
@@ -281,7 +281,7 @@ func (network *Network) SendStoreAnswerMessage(answer protocol.StoreAnswerStoreA
 			error = true
 		} else {
 			// Wrap store message and get bytes to send
-			message := network.GetRPCMessage(out, protocol.RPC_STORE_ANSWER, id[:], MyRoutingTable.GetMe().ID[:])
+			message := network.GetRPCMessage(out, protocol.RPC_STORE_ANSWER, id[:], *originalSender)
 			// Write message to the connection (send to other node)
 			n, err := conn.Write(message)
 			if err != nil {
@@ -354,7 +354,7 @@ func (network *Network) SendFile(filehash *[20]byte, contact *Contact, port stri
 
 // port format;  ":<port>"
 // Returns true if an error occured
-func (network *Network) RecieveFile(port string, filename string, contact *Contact, id messageID, fileSize int64) bool {
+func (network *Network) RecieveFile(port string, filename string, contact *Contact, id messageID, fileSize int64, originalSender *[]byte) bool {
 	// Start listening on specified port
 	server, err := net.Listen("tcp", port)
 
@@ -375,7 +375,7 @@ func (network *Network) RecieveFile(port string, filename string, contact *Conta
 	defer server.Close()
 
 	// Send response indicating that we started listening and are ready for the file
-	error := network.SendStoreAnswerMessage(protocol.StoreAnswer_OK, contact, id)
+	error := network.SendStoreAnswerMessage(protocol.StoreAnswer_OK, contact, id, originalSender)
 	if error {
 		log.WithFields(log.Fields{
 			"Contact": contact,
