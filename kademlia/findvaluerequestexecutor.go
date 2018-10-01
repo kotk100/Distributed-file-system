@@ -20,7 +20,8 @@ func (findValueRequestExecutor *FindValueRequestExecutor) execute() {
 		findValueRequestExecutor.contact,
 		make([]Contact, 0),
 		findValueRequestExecutor.id,
-		MyRoutingTable.me.ID)
+		MyRoutingTable.me.ID,
+		false)
 	//if the channel return nil then there was error
 	if error {
 		log.Info("Error to send FindValue message.")

@@ -7,6 +7,7 @@ import (
 
 type LookupValueCallback interface {
 	contactWithFile(contact Contact)
+	noContactWithFileFound(contacts []Contact)
 }
 
 type FindValueRequestCallback interface {
@@ -55,7 +56,11 @@ func (lookupValue *LookupValue) successRequest(contact Contact, contacts []Conta
 }
 
 func (lookupValue *LookupValue) processKClosest(KClosestOfTarget []LookupNodeContact) {
-	//NOTHING TO DO
+	contacts := make([]Contact,0)
+	for _,v := range KClosestOfTarget{
+		contacts=append(contacts,v.contact)
+	}
+	(*lookupValue.lookupValueCallback).noContactWithFileFound(contacts)
 }
 
 func (lookupValue *LookupValue) sendLookNode(target *KademliaID, contact *Contact) {
