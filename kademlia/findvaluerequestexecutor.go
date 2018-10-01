@@ -5,7 +5,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-type FindValueRequestExecutor struct{
+type FindValueRequestExecutor struct {
 	ch       chan *protocol.RPC
 	id       messageID
 	contact  *Contact
@@ -46,9 +46,9 @@ func (findValueRequestExecutor *FindValueRequestExecutor) execute() {
 			} else {
 				// Parse ping message and create contact
 				findValue := parseFindValueRequest(rpc)
-				contactSender := createContactFromFindValue(rpc)
+				contactSender := createContactFromRPC(rpc)
 				contacts := FindValue_ContactToContact(findValue.Contacts)
-				(*findValueRequestExecutor.callback).successRequest(*contactSender, contacts,findValue.HaveTheFile)
+				(*findValueRequestExecutor.callback).successRequest(*contactSender, contacts, findValue.HaveTheFile)
 
 				MyRoutingTable.AddContactAsync(*contactSender)
 			}

@@ -36,7 +36,6 @@ func parseFindValueRequest(rpc *protocol.RPC) *protocol.FindValue {
 	return findValue
 }
 
-
 func answerFindValueRequest(msg *protocol.RPC) {
 
 	// Create message ID
@@ -45,20 +44,20 @@ func answerFindValueRequest(msg *protocol.RPC) {
 
 	// Parse findNode message and create contact
 	findValue := parseFindValueRequest(msg)
-	sender := createContactFromFindValue(msg)
+	sender := createContactFromRPC(msg)
 	fileHashKademlia := KademliaIDFromSlice(findValue.FileHash)
 	net := &Network{}
 	originalSender := KademliaIDFromSlice(msg.OriginalSender)
 
 	//check if node has the file set boolean
-	haveTheFile:=false
+	haveTheFile := false
 	contacts := MyRoutingTable.FindClosestContacts(fileHashKademlia, bucketSize)
 
-	net.SendFindDataMessage(findValue.FileHash, sender, contacts,id, originalSender, haveTheFile)
+	net.SendFindDataMessage(findValue.FileHash, sender, contacts, id, originalSender, haveTheFile)
 	MyRoutingTable.AddContactAsync(*sender)
 }
 
-func createContactFromFindValue(rpc *protocol.RPC) *Contact {
+func createContactFromRPC(rpc *protocol.RPC) *Contact {
 	// Create contact
 	contact := &Contact{}
 	contact.Address = rpc.IPaddress

@@ -42,8 +42,7 @@ func (requestExecutorPing *PingRequestExecutor) execute() {
 			}
 		} else {
 			// Parse ping message and create contact
-			ping := parsePingRPC(rpc)
-			contactSender := createContactFromPing(ping, rpc)
+			contactSender := createContactFromRPC(rpc)
 
 			if contactSender.ID != requestExecutorPing.contact.ID {
 				log.WithFields(log.Fields{

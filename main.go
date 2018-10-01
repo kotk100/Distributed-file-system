@@ -2,6 +2,7 @@ package main
 
 import (
 	"./kademlia"
+	"bufio"
 	log "github.com/sirupsen/logrus"
 	"os"
 	"runtime"
@@ -42,7 +43,16 @@ func main() {
 	}
 
 	dRT := kademlia.DisplayRoutingTableClock{}
-	dRT.Display()
+	go dRT.Display()
+
+	// Test saving files
+	scanner := bufio.NewScanner(os.Stdin)
+	for scanner.Scan() {
+		buffer := scanner.Bytes()
+
+		store := kademlia.CreateNewStore(&buffer, nil)
+		store.StartStore()
+	}
 
 	// Wait forever
 	for {

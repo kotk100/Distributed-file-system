@@ -36,14 +36,6 @@ func parseFindNodeRequest(rpc *protocol.RPC) *protocol.FindNode {
 	return findNode
 }
 
-func createContactFromFindNode(rpc *protocol.RPC) *Contact {
-	// Create contact
-	contact := &Contact{}
-	contact.Address = rpc.IPaddress
-	contact.ID = KademliaIDFromSlice(rpc.KademliaID)
-	return contact
-}
-
 func answerFindNodeRequest(msg *protocol.RPC) {
 
 	// Create message ID
@@ -52,7 +44,7 @@ func answerFindNodeRequest(msg *protocol.RPC) {
 
 	// Parse findNode message and create contact
 	findNode := parseFindNodeRequest(msg)
-	sender := createContactFromFindNode(msg)
+	sender := createContactFromRPC(msg)
 	targetId := KademliaIDFromSlice(findNode.TargetID)
 	contacts := MyRoutingTable.FindClosestContacts(targetId, bucketSize)
 	net := &Network{}

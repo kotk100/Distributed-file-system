@@ -45,7 +45,7 @@ func (findNodeRequestExecutor *FindNodeRequestExecutor) execute() {
 			} else {
 				// Parse ping message and create contact
 				findNode := parseFindNodeRequest(rpc)
-				contactSender := createContactFromFindNode(rpc)
+				contactSender := createContactFromRPC(rpc)
 				contacts := FindNode_ContactToContact(findNode.Contacts)
 				(*findNodeRequestExecutor.callback).successRequest(*contactSender, contacts)
 

@@ -8,5 +8,4 @@ message StoreAnswer {
         ERROR = 2;
     }
     storeAnswer answer = 1;
-
 }

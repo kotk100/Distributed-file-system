@@ -3,6 +3,7 @@ package kademlia
 import (
 	"./protocol"
 	log "github.com/sirupsen/logrus"
+	"os"
 )
 
 type StoreRequestExecutor struct {
@@ -14,47 +15,114 @@ type StoreRequestExecutor struct {
 
 func (storeRequestExecutor *StoreRequestExecutor) execute() {
 	// Send store message to other node
-
 	var network Network
-	error := network.SendPingMessage(MyRoutingTable.me.ID, requestExecutorPing.contact, requestExecutorPing.id)
+	error := network.SendStoreMessage(storeRequestExecutor.store.filename, int64(len(*storeRequestExecutor.store.file)), &storeRequestExecutor.contact, storeRequestExecutor.id)
+	log.WithFields(log.Fields{
+		"Contact":  storeRequestExecutor.contact,
+		"Filename": storeRequestExecutor.store.filename,
+	}).Info("Send STORE message to contact.")
 
 	//if the channel return nil then there was error
 	if error {
-		log.Info("Error to send ping.")
-		destroyRoutine(requestExecutorPing.id)
-		requestExecutorPing.pingCallback.pingResult(false)
+		log.Error("Error sending Store RPC.")
+		destroyRoutine(storeRequestExecutor.id)
 	} else {
-		timeout := NewTimeout(requestExecutorPing.id, requestExecutorPing.ch)
+		timeout := NewTimeout(storeRequestExecutor.id, storeRequestExecutor.ch)
 		timeOutManager.insertAndStart(timeout)
 		// Recieve response message through channel
-		rpc := <-requestExecutorPing.ch
-		if optionalTimeout := timeOutManager.tryGetAndRemoveTimeOut(requestExecutorPing.id); optionalTimeout != nil {
+		rpc := <-storeRequestExecutor.ch
+		if optionalTimeout := timeOutManager.tryGetAndRemoveTimeOut(storeRequestExecutor.id); optionalTimeout != nil {
 			optionalTimeout.stop()
 		}
-		log.Info("Received PING message response.")
+
 		if rpc == nil {
-			log.Error("ping request time out.")
-			if requestExecutorPing.pingCallback != nil {
-				requestExecutorPing.pingCallback.pingResult(false)
-			}
+			log.Error("Store request time out.")
 		} else {
-			// Parse ping message and create contact
-			ping := parsePingRPC(rpc)
-			contactSender := createContactFromPing(ping, rpc)
+			log.WithFields(log.Fields{
+				"Contact":  storeRequestExecutor.contact,
+				"Filename": storeRequestExecutor.store.filename,
+			}).Info("Received STORE message response.")
 
-			if contactSender.ID != requestExecutorPing.contact.ID {
+			// Parse store message and create contact for adding to routing table
+			store := parseStoreAnswerRPC(rpc)
+			other := createContactFromRPC(rpc)
+			MyRoutingTable.AddContactAsync(*other)
+
+			switch answer := store.Answer; answer {
+			// Other node is ready to start receiving the file
+			case protocol.StoreAnswer_OK:
+				// Send data (file) in chunks to other node
+				port := os.Getenv("FILE_TRANSFER_PORT")
+
 				log.WithFields(log.Fields{
-					"contactSender": contactSender,
-					"contact":       requestExecutorPing.contact,
-				}).Error("Ping response from wrong Node recieved. Occurs when a new node joins the network.")
-			}
+					"Contact":  storeRequestExecutor.contact,
+					"Filename": storeRequestExecutor.store.filename,
+				}).Info("Send file to contact.")
+				error = network.SendFile(storeRequestExecutor.store.filehash, &storeRequestExecutor.contact, port)
+				if error {
+					log.WithFields(log.Fields{
+						"Other node": storeRequestExecutor.contact,
+						"Filehash":   storeRequestExecutor.store.filehash,
+					}).Error("Error sending file.")
+				}
 
-			MyRoutingTable.AddContact(*contactSender)
+				log.WithFields(log.Fields{
+					"Contact":  storeRequestExecutor.contact,
+					"Filename": storeRequestExecutor.store.filename,
+				}).Info("Sending file finished.")
 
-			if requestExecutorPing.pingCallback != nil {
-				requestExecutorPing.pingCallback.pingResult(true)
+				// Wait for response to see if saving file succeded
+				// Recieve response message through channel
+				timeout := NewTimeout(storeRequestExecutor.id, storeRequestExecutor.ch)
+				timeOutManager.insertAndStart(timeout)
+				rpc := <-storeRequestExecutor.ch
+				if optionalTimeout := timeOutManager.tryGetAndRemoveTimeOut(storeRequestExecutor.id); optionalTimeout != nil {
+					optionalTimeout.stop()
+				}
+
+				if rpc == nil {
+					log.Error("Sending file time out. No response recieved.")
+				} else {
+					log.WithFields(log.Fields{
+						"Contact":  storeRequestExecutor.contact,
+						"Filename": storeRequestExecutor.store.filename,
+					}).Info("Received response after storing file.")
+
+					// Parse store message and create contact for adding to routing table
+					store := parseStoreAnswerRPC(rpc)
+					other := createContactFromRPC(rpc)
+					MyRoutingTable.AddContactAsync(*other)
+
+					switch answer := store.Answer; answer {
+					// Other node successfully saved file
+					case protocol.StoreAnswer_OK:
+						// Do nothing
+					case protocol.StoreAnswer_ERROR:
+						// TODO what hapens if a file cant be stored on node? (for example if there is not enough space)
+						log.WithFields(log.Fields{
+							"Other node": other,
+						}).Error("Failed to store file on node.")
+					default:
+						log.WithFields(log.Fields{
+							"Answer": answer,
+						}).Error("Wrong option from store answer response.")
+					}
+				}
+
+			case protocol.StoreAnswer_ALREADY_STORED:
+				// File already stored on node, don't have to do anything
+			case protocol.StoreAnswer_ERROR:
+				// TODO what hapens if a file cant be stored on node? (for example if there is not enough space)
+				log.WithFields(log.Fields{
+					"Other node": other,
+				}).Error("Failed to store file on node.")
+			default:
+				log.WithFields(log.Fields{
+					"Answer": answer,
+				}).Error("Wrong option from store answer response.")
 			}
 		}
+		destroyRoutine(storeRequestExecutor.id)
 	}
 }
 

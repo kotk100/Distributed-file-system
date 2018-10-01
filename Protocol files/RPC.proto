@@ -14,6 +14,7 @@ message RPC {
         FIND_VALUE = 3;
         PIN = 4;
         UNPIN = 5;
+        STORE_ANSWER = 6;
     }
     messageTYPE messageType = 2;
 

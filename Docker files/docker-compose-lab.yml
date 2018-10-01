@@ -7,11 +7,12 @@ services:
     environment:
       BOOTSTRAP_ADDR: "bootstrapingNode:44135"
       LISTEN_PORT: ":44135"
+      FILE_TRANSFER_PORT: ":44589"
     depends_on:
       - "bootstrapingNode"
-      - kademlia_network
+      - "kademlia_network"
     deploy:
-      replicas: 100
+      replicas: 40
       resources:
         limits:
           cpus: "0.1"
@@ -27,8 +28,9 @@ services:
     tty: true
     environment:
       LISTEN_PORT: ":44135"
+      FILE_TRANSFER_PORT: ":44589"
     depends_on:
-      - kademlia_network
+      - "kademlia_network"
     deploy:
       replicas: 1
       #        resources:
@@ -47,8 +49,9 @@ services:
     environment:
       BOOTSTRAP_ADDR: "bootstrapingNode:44135"
       LISTEN_PORT: ":44135"
+      FILE_TRANSFER_PORT: ":44589"
     depends_on:
-      - kademlia_network
+      - "kademlia_network"
     deploy:
       replicas: 1
       restart_policy:

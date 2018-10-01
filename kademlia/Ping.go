@@ -37,19 +37,9 @@ func parsePingRPC(rpc *protocol.RPC) *protocol.Ping {
 	return ping
 }
 
-func createContactFromPing(ping *protocol.Ping, rpc *protocol.RPC) *Contact {
-	// Create contact
-	contact := &Contact{}
-	contact.Address = rpc.IPaddress
-	contact.ID = KademliaIDFromSlice(rpc.KademliaID)
-
-	return contact
-}
-
 func answerPingRequest(msg *protocol.RPC) {
 	// Parse ping message and create contact
-	ping := parsePingRPC(msg)
-	contact := createContactFromPing(ping, msg)
+	contact := createContactFromRPC(msg)
 
 	// Create message ID
 	id := messageID{}

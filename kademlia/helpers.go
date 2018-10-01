@@ -41,8 +41,7 @@ func createRoutine(executor RequestExecutor) {
 	go executor.execute()
 }
 
-
-func destroyRoutine(id messageID){
+func destroyRoutine(id messageID) {
 	mutexMap.Lock()
 	delete(m, id)
 	mutexMap.Unlock()
@@ -53,7 +52,7 @@ func sendMessageToRoutine(msg *protocol.RPC) {
 	// Read messageID from message
 	id := messageID{}
 	copy(id[:], msg.MessageID[0:20])
-	originalSender :=KademliaIDFromSlice(msg.OriginalSender)
+	originalSender := KademliaIDFromSlice(msg.OriginalSender)
 
 	// This RPC message is not a response, handle the request
 	if MyRoutingTable.me.ID.Equals(originalSender) {
@@ -63,12 +62,12 @@ func sendMessageToRoutine(msg *protocol.RPC) {
 		// Get channel
 		mutexMap.Lock()
 		c := m[id]
-		if c!=nil {
+		if c != nil {
 			// Write message to channel
 			c <- msg
 		}
 		mutexMap.Unlock()
-	}else{
+	} else {
 		log.WithFields(log.Fields{
 			"ID": id,
 		}).Debug("Recieved message is a request.")
@@ -77,7 +76,7 @@ func sendMessageToRoutine(msg *protocol.RPC) {
 		case protocol.RPC_PING:
 			go answerPingRequest(msg)
 		case protocol.RPC_STORE:
-			//TODO
+			go answerStoreRequest(msg)
 		case protocol.RPC_FIND_NODE:
 			go answerFindNodeRequest(msg)
 		case protocol.RPC_FIND_VALUE:
@@ -89,7 +88,7 @@ func sendMessageToRoutine(msg *protocol.RPC) {
 		default:
 			log.WithFields(log.Fields{
 				"Message": msg,
-			}).Error("Failed to parse incomming RPC message.")
+			}).Error("Message type not supported.")
 		}
 	}
 }
