@@ -59,7 +59,7 @@ func (storeRequestExecutor *StoreRequestExecutor) execute() {
 					"Contact":  storeRequestExecutor.contact,
 					"Filename": storeRequestExecutor.store.filename,
 				}).Info("Send file to contact.")
-				error = network.SendFile(storeRequestExecutor.store.filehash, &storeRequestExecutor.contact, port)
+				error = network.SendFile(storeRequestExecutor.store.filehash, &storeRequestExecutor.contact, port, int64(len(*storeRequestExecutor.store.file)))
 				if error {
 					log.WithFields(log.Fields{
 						"Other node": storeRequestExecutor.contact,

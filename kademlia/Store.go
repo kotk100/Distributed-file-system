@@ -268,7 +268,7 @@ func createFileReader(filehash *[20]byte) *FileReader {
 	return reader
 }
 
-func hashToString(hash []byte) string{
+func hashToString(hash []byte) string {
 	return hex.EncodeToString(hash)
 }
 
@@ -298,18 +298,18 @@ func checkFileExistsHash(filehash string) bool {
 
 // Close file
 func (fileReader *FileReader) close() {
-	fileReader.close()
+	fileReader.file.Close()
 }
 
 // Writes a chunk of the file returning error
 func (fileReader *FileReader) ReadFileChunk(file *[]byte) (int, bool) {
 	n, err := fileReader.file.Read(*file)
 
-	if err != nil || n != len(*file) {
+	if err != nil {
 		log.WithFields(log.Fields{
-			"Error":        err,
-			"Writen bytes": n,
-		}).Error("Failed writing a chunk of a file.")
+			"Error":      err,
+			"Read bytes": n,
+		}).Error("Failed reading a chunk of a file.")
 		return n, true
 	}
 

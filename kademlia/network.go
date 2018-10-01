@@ -305,7 +305,7 @@ func (network *Network) SendStoreAnswerMessage(answer protocol.StoreAnswerStoreA
 var BUFFERSIZE int64 = 1300
 
 // port format;  ":<port>"
-func (network *Network) SendFile(filehash *[20]byte, contact *Contact, port string) bool {
+func (network *Network) SendFile(filehash *[20]byte, contact *Contact, port string, fileLenght int64) bool {
 	// Create address to connect to and connect to it
 	s := strings.Split(contact.Address, ":")
 	connection, err := net.Dial("tcp", s[0]+port)
@@ -334,8 +334,12 @@ func (network *Network) SendFile(filehash *[20]byte, contact *Contact, port stri
 	defer fileReader.close()
 
 	sendBuffer := make([]byte, BUFFERSIZE)
-	for {
-		_, err := fileReader.ReadFileChunk(&sendBuffer)
+	var totalReadBytes int64
+
+	for fileLenght < totalReadBytes {
+		readBytes, err := fileReader.ReadFileChunk(&sendBuffer)
+		totalReadBytes += int64(readBytes)
+
 		if err {
 			log.WithFields(log.Fields{
 				"Error":    err,
