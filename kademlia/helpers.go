@@ -81,7 +81,7 @@ func sendMessageToRoutine(msg *protocol.RPC) {
 		case protocol.RPC_FIND_NODE:
 			go answerFindNodeRequest(msg)
 		case protocol.RPC_FIND_VALUE:
-			//TODO
+			go answerFindValueRequest(msg)
 		case protocol.RPC_PIN:
 			//TODO
 		case protocol.RPC_UNPIN:

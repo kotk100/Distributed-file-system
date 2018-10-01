@@ -3,15 +3,14 @@ package protocol;
 
 message FindValue {
 
-    message Contact{
-         string IPaddress = 1;
-         bytes kademliaID = 2;
+    message Contact {
+        string IPaddress = 1;
+        bytes kademliaID = 2;
     }
 
     repeated Contact contacts = 1;
 
-    bytes targetID = 2;
+    bytes fileHash = 2;
 
-    bytes password = 3;
-    bytes fileHash = 4;
+    bool HaveTheFile = 3;
 }

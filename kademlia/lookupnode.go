@@ -19,12 +19,17 @@ type LookupNodeCallback interface {
 	processKClosest(KClosestOfTarget []LookupNodeContact)
 }
 
+type LookNodeSender interface {
+	sendLookNode(target *KademliaID, contact *Contact)
+}
+
 type LookupNode struct {
 	target                Contact
 	shortlist             []LookupNodeContact
 	mux                   sync.Mutex
 	lookupNodeParallelism *LookupNodeParallelism
 	lookupNodeCallback    *LookupNodeCallback
+	lookNodeSender        *LookNodeSender
 }
 
 func NewLookupNode(target Contact, lookupNodeCallback LookupNodeCallback) *LookupNode {
@@ -33,7 +38,18 @@ func NewLookupNode(target Contact, lookupNodeCallback LookupNodeCallback) *Looku
 	lookup.target = target
 	lookup.lookupNodeParallelism = NewLookupNodeParallelism(lookup)
 	lookup.lookupNodeCallback = &lookupNodeCallback
+	lookup.setLookUpNodeSender(lookup)
 	return lookup
+}
+
+func NewLookupNodeWithCustomSender(target Contact, lookupNodeCallback LookupNodeCallback,lookNodeSender LookNodeSender) *LookupNode {
+	lookup := NewLookupNode(target,lookupNodeCallback)
+	lookup.setLookUpNodeSender(lookNodeSender)
+	return lookup
+}
+
+func (lookupNode *LookupNode) setLookUpNodeSender(lookNodeSender LookNodeSender){
+	lookupNode.lookNodeSender = &lookNodeSender
 }
 
 //give channel or callback to get K closest result
@@ -43,7 +59,7 @@ func (lookupNode *LookupNode) Start() {
 
 	for _, element := range contactsCloseOfTarget {
 		lookupNodeContact := NewLookupNodeContact(element)
-		lookupNode.shortlist = append(lookupNode.shortlist,lookupNodeContact)
+		lookupNode.shortlist = append(lookupNode.shortlist, lookupNodeContact)
 		lookupNode.sendFindNodeRequest()
 	}
 	log.WithFields(log.Fields{
@@ -75,6 +91,10 @@ func (lookupNode *LookupNode) successRequest(contactAsked Contact, KClosestOfTar
 	}
 }
 
+func (lookupNode *LookupNode) stop(){
+	lookupNode.lookupNodeParallelism.stop()
+}
+
 func (lookupNode *LookupNode) errorRequest(contactAsked Contact) {
 	lookupNode.changeLookupContactState(contactAsked, FAILED)
 	lookupNode.cleanShortList()
@@ -92,7 +112,11 @@ func (lookupNode *LookupNode) sendFindNodeToRandomContact() {
 	contactToAsk := lookupNode.shortlist[myrand]
 	lookupNode.changeLookupNodeContactState(&contactToAsk, ASKING)
 	lookupNode.mux.Unlock()
-	SendAndReceiveFindNode(lookupNode, lookupNode.target.ID, &contactToAsk.contact)
+	lookupNode.sendLookNode(lookupNode.target.ID, &contactToAsk.contact)
+}
+
+func (lookupNode *LookupNode) sendLookNode(target *KademliaID, contact *Contact){
+	SendAndReceiveFindNode(lookupNode, lookupNode.target.ID, contact)
 }
 
 func (lookupNode *LookupNode) cleanShortList() {
@@ -113,7 +137,7 @@ func (lookupNode *LookupNode) sendFindNodeRequest() {
 		log.WithFields(log.Fields{
 			"contactToAsk": contactToAsk,
 		}).Debug("Send find node request from lookup node")
-		SendAndReceiveFindNode(lookupNode, lookupNode.target.ID, &contactToAsk.contact)
+		lookupNode.sendLookNode(lookupNode.target.ID, &contactToAsk.contact)
 	} else {
 		lookupNode.mux.Unlock()
 	}

@@ -178,8 +178,41 @@ func (network *Network) SendFindContactMessage(targetId *KademliaID, originalSen
 	return error
 }
 
-func (network *Network) SendFindDataMessage(hash string) {
-	// TODO
+func (network *Network) SendFindDataMessage(fileHash []byte, contact *Contact, contacts []Contact, messageID messageID,originalSender *KademliaID,haveTheFile bool) bool {
+	// Open connection
+	conn, err := net.Dial("udp", contact.Address)
+	error := false
+	if err != nil {
+		log.WithFields(log.Fields{
+			"Error":   err,
+			"Contact": contact,
+		}).Error("Failed to dial UDP address.")
+		error = true
+	} else {
+		out, err := createFindValueToByte(fileHash, contacts,haveTheFile)
+		if err != nil {
+			log.WithFields(log.Fields{
+				"Error": err,
+			}).Error("Failed to encode FindValue message:")
+			error = true
+		} else {
+			message := network.GetRPCMessage(out, protocol.RPC_FIND_VALUE, messageID[:], originalSender[:])
+			n, err := conn.Write(message)
+			if err != nil {
+				log.WithFields(log.Fields{
+					"Error":           err,
+					"Number of bytes": n,
+				}).Error("Failed to write message to connection.")
+				error = true
+			} else {
+				log.Debug("Message writen to conn.")
+			}
+		}
+		// Close connection
+		conn.Close()
+	}
+
+	return error
 }
 
 func (network *Network) SendStoreMessage(data []byte) {
