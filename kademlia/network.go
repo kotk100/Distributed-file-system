@@ -16,9 +16,7 @@ type NetworkAPI interface {
 type Network struct {
 }
 
-// TODO
-//TODO routing messages
-func handleIncomingMessage(buf []byte, addr *net.UDPAddr) {
+func handleIncomingMessage(buf []byte) {
 	// Parse incoming message
 	rpc := &protocol.RPC{}
 	if err := proto.Unmarshal(buf, rpc); err != nil {
@@ -33,11 +31,6 @@ func handleIncomingMessage(buf []byte, addr *net.UDPAddr) {
 
 	// Forward message to the right routine
 	sendMessageToRoutine(rpc)
-}
-
-//TODO parse message
-func parseMessage(buf []byte) {
-
 }
 
 func Listen(port string) {
@@ -74,7 +67,7 @@ func Listen(port string) {
 			}).Error("Failed to recieve a message.")
 		}
 
-		handleIncomingMessage(buf[0:n], addr)
+		handleIncomingMessage(buf[0:n])
 	}
 }
 
@@ -104,15 +97,17 @@ func (network *Network) GetRPCMessage(message []byte, messageType protocol.RPCMe
 func (network *Network) SendPingMessage(originalSender *KademliaID, contact *Contact, messageID messageID) bool {
 	// Open connection
 	conn, err := net.Dial("udp", contact.Address)
-	error := false
 
 	if err != nil {
 		log.WithFields(log.Fields{
 			"Error":   err,
 			"Contact": contact,
 		}).Error("Failed to dial UDP address.")
-		error = true
+		return true
 	} else {
+		// Close connection
+		defer conn.Close()
+
 		// Create ping message
 		ping := &protocol.Ping{}
 		out, err := proto.Marshal(ping)
@@ -121,7 +116,7 @@ func (network *Network) SendPingMessage(originalSender *KademliaID, contact *Con
 			log.WithFields(log.Fields{
 				"Error": err,
 			}).Error("Failed to encode PING message:")
-			error = true
+			return true
 		} else {
 			// Wrap ping message and get bytes to send
 			message := network.GetRPCMessage(out, protocol.RPC_PING, messageID[:], originalSender[:])
@@ -132,34 +127,34 @@ func (network *Network) SendPingMessage(originalSender *KademliaID, contact *Con
 					"Error":           err,
 					"Number of bytes": n,
 				}).Error("Failed to write message to connection.")
-				error = true
+				return true
 			} else {
 				log.Debug("Message writen to conn.")
 			}
 		}
-		// Close connection
-		conn.Close()
 	}
-	return error
+	return false
 }
 
 func (network *Network) SendFindContactMessage(targetId *KademliaID, originalSender *KademliaID, contact *Contact, contacts []Contact, messageID messageID) bool {
 	// Open connection
 	conn, err := net.Dial("udp", contact.Address)
-	error := false
 	if err != nil {
 		log.WithFields(log.Fields{
 			"Error":   err,
 			"Contact": contact,
 		}).Error("Failed to dial UDP address.")
-		error = true
+		return true
 	} else {
+		// Close connection
+		defer conn.Close()
+
 		out, err := createFindNodeToByte(targetId, contacts)
 		if err != nil {
 			log.WithFields(log.Fields{
 				"Error": err,
 			}).Error("Failed to encode FindNode message:")
-			error = true
+			return true
 		} else {
 			message := network.GetRPCMessage(out, protocol.RPC_FIND_NODE, messageID[:], originalSender[:])
 			n, err := conn.Write(message)
@@ -168,35 +163,35 @@ func (network *Network) SendFindContactMessage(targetId *KademliaID, originalSen
 					"Error":           err,
 					"Number of bytes": n,
 				}).Error("Failed to write message to connection.")
-				error = true
+				return true
 			} else {
 				log.Debug("Message writen to conn.")
 			}
 		}
-		// Close connection
-		conn.Close()
 	}
 
-	return error
+	return false
 }
 
 func (network *Network) SendFindDataMessage(fileHash []byte, contact *Contact, contacts []Contact, messageID messageID, originalSender *KademliaID, haveTheFile bool, fileName string, fileSize int64) bool {
 	// Open connection
 	conn, err := net.Dial("udp", contact.Address)
-	error := false
 	if err != nil {
 		log.WithFields(log.Fields{
 			"Error":   err,
 			"Contact": contact,
 		}).Error("Failed to dial UDP address.")
-		error = true
+		return true
 	} else {
+		// Close connection
+		defer conn.Close()
+
 		out, err := createFindValueToByte(fileHash, contacts, haveTheFile, fileName, fileSize)
 		if err != nil {
 			log.WithFields(log.Fields{
 				"Error": err,
 			}).Error("Failed to encode FindValue message:")
-			error = true
+			return true
 		} else {
 			message := network.GetRPCMessage(out, protocol.RPC_FIND_VALUE, messageID[:], originalSender[:])
 			n, err := conn.Write(message)
@@ -205,29 +200,29 @@ func (network *Network) SendFindDataMessage(fileHash []byte, contact *Contact, c
 					"Error":           err,
 					"Number of bytes": n,
 				}).Error("Failed to write message to connection.")
-				error = true
+				return true
 			} else {
 				log.Debug("Message writen to conn.")
 			}
 		}
-		// Close connection
-		conn.Close()
 	}
 
-	return error
+	return false
 }
 
 func (network *Network) SendStoreMessage(filename string, lenght int64, contact *Contact, id messageID, originalSender *[]byte) bool {
 	// Open connection
 	conn, err := net.Dial("udp", contact.Address)
-	error := false
 	if err != nil {
 		log.WithFields(log.Fields{
 			"Error":   err,
 			"Contact": contact,
 		}).Error("Failed to dial UDP address.")
-		error = true
+		return true
 	} else {
+		// Close connection
+		defer conn.Close()
+
 		store := &protocol.Store{}
 		store.Filename = filename
 		store.FileSize = lenght
@@ -237,7 +232,7 @@ func (network *Network) SendStoreMessage(filename string, lenght int64, contact 
 			log.WithFields(log.Fields{
 				"Error": err,
 			}).Error("Failed to encode STORE message:")
-			error = true
+			return true
 		} else {
 			// Wrap store message and get bytes to send
 			message := network.GetRPCMessage(out, protocol.RPC_STORE, id[:], *originalSender)
@@ -248,29 +243,29 @@ func (network *Network) SendStoreMessage(filename string, lenght int64, contact 
 					"Error":           err,
 					"Number of bytes": n,
 				}).Error("Failed to write message to connection.")
-				error = true
+				return true
 			} else {
 				log.Debug("Message writen to conn.")
 			}
 		}
-		// Close connection
-		conn.Close()
 	}
 
-	return error
+	return false
 }
 
 func (network *Network) SendStoreAnswerMessage(answer protocol.StoreAnswerStoreAnswer, contact *Contact, id messageID, originalSender *[]byte) bool {
 	// Open connection
 	conn, err := net.Dial("udp", contact.Address)
-	error := false
 	if err != nil {
 		log.WithFields(log.Fields{
 			"Error":   err,
 			"Contact": contact,
 		}).Error("Failed to dial UDP address.")
-		error = true
+		return true
 	} else {
+		// Close connection
+		defer conn.Close()
+
 		store := &protocol.StoreAnswer{}
 		store.Answer = answer
 		out, err := proto.Marshal(store)
@@ -279,7 +274,7 @@ func (network *Network) SendStoreAnswerMessage(answer protocol.StoreAnswerStoreA
 			log.WithFields(log.Fields{
 				"Error": err,
 			}).Error("Failed to encode STORE ANSWER message:")
-			error = true
+			return true
 		} else {
 			// Wrap store message and get bytes to send
 			message := network.GetRPCMessage(out, protocol.RPC_STORE_ANSWER, id[:], *originalSender)
@@ -290,16 +285,14 @@ func (network *Network) SendStoreAnswerMessage(answer protocol.StoreAnswerStoreA
 					"Error":           err,
 					"Number of bytes": n,
 				}).Error("Failed to write message to connection.")
-				error = true
+				return true
 			} else {
 				log.Debug("Message writen to conn.")
 			}
 		}
-		// Close connection
-		conn.Close()
 	}
 
-	return error
+	return false
 }
 
 // Buffer size for sending files over TCP
@@ -380,8 +373,8 @@ func (network *Network) RecieveFile(port string, filename string, contact *Conta
 	defer server.Close()
 
 	// Send response indicating that we started listening and are ready for the file
-	error := network.SendStoreAnswerMessage(protocol.StoreAnswer_OK, contact, id, originalSender)
-	if error {
+	errBool := network.SendStoreAnswerMessage(protocol.StoreAnswer_OK, contact, id, originalSender)
+	if errBool {
 		log.WithFields(log.Fields{
 			"Contact": contact,
 		}).Error("Failed to send Store Answer message.")

@@ -21,7 +21,6 @@ func main() {
 	log.Info("Hello, World!")
 
 	// Get bootstrap node address
-	// TODO if empty that means this is the bootstraping node
 	dns_name := os.Getenv("BOOTSTRAP_ADDR")
 	port := os.Getenv("LISTEN_PORT")
 
