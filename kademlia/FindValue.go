@@ -49,10 +49,14 @@ func answerFindValueRequest(msg *protocol.RPC) {
 	net := &Network{}
 	originalSender := KademliaIDFromSlice(msg.OriginalSender)
 
-	//check if node has the file set boolean
 	haveTheFile := false
-	contacts := MyRoutingTable.FindClosestContacts(fileHashKademlia, bucketSize)
-
+	contacts := make([]Contact,0)
+	//check if node has the file set boolean
+	if checkFileExistsHash(hashToString(findValue.FileHash)) {
+		haveTheFile = true
+	} else {
+		contacts = MyRoutingTable.FindClosestContacts(fileHashKademlia, bucketSize)
+	}
 	net.SendFindDataMessage(findValue.FileHash, sender, contacts, id, originalSender, haveTheFile)
 	MyRoutingTable.AddContactAsync(*sender)
 }
