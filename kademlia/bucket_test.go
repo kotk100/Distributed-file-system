@@ -57,6 +57,7 @@ func TestBucketIsEmptyAtTheBeginning(t *testing.T){
 }
 
 func TestBucketShouldAddAContactWhenIsNotFull(t *testing.T){
+	InitMyInformation("test")
 	bucket:=newBucket()
 	contact := NewContact(NewKademliaID("FFFFFFFF00000000000000000000000000000000"), "localhost:8001")
 	bucket.AddContact(contact)
@@ -65,6 +66,7 @@ func TestBucketShouldAddAContactWhenIsNotFull(t *testing.T){
 }
 
 func TestContactShouldMoveToFront(t *testing.T){
+	InitMyInformation("test")
 	bucket:=newBucket()
 	contact1 := NewContact(NewKademliaID("FFFFFFFF00000000000001000000000000000000"), "localhost:8001")
 	bucket.AddContact(contact1)
@@ -100,7 +102,7 @@ func TestInsertContactWhenBucketIsFullAndOldestContactTimeOut(t *testing.T){
 	bucket.networkAPI = testObj
 
 	bucket.contactToInsert = contactToInsert
-	bucket.mux.Lock()
+	bucket.muxAdd.Lock()
 
 	pingBucketRequestExecutor:= PingBucketRequestExecutor{}
 	pingBucketRequestExecutor.contact = &oldestContact
@@ -137,7 +139,7 @@ func TestInsertContactWhenBucketIsFullAndErrorToSendPing(t *testing.T){
 	bucket.networkAPI = testObj
 
 	bucket.contactToInsert = contactToInsert
-	bucket.mux.Lock()
+	bucket.muxAdd.Lock()
 	pingBucketRequestExecutor:= PingBucketRequestExecutor{}
 	pingBucketRequestExecutor.contact = &oldestContact
 	pingBucketRequestExecutor.bucket = bucket
@@ -172,7 +174,7 @@ func TestInsertContactWhenBucketIsFullAndOldestContactAnswer(t *testing.T){
 	testObj.On("SendPingMessage", MyRoutingTable.me.ID,&oldestContact,messageID).Return(false)
 	bucket.networkAPI = testObj
 
-	bucket.mux.Lock()
+	bucket.muxAdd.Lock()
 	pingBucketRequestExecutor:= PingBucketRequestExecutor{}
 	pingBucketRequestExecutor.contact = &oldestContact
 	pingBucketRequestExecutor.bucket = bucket

@@ -168,7 +168,7 @@ func TestUpdateLastContactShortList(t *testing.T){
 	target:=NewContact(NewKademliaID("1111111111000000000000000000000000000000"), "localhost:8000")
 	lookup := NewLookupNode(target,nil)
 	fillShortList(lookup)
-	newContact:=NewContact(NewKademliaID("1011111111111111000000000000000000000000"), "localhost:8000")
+	newContact:=NewContact(NewKademliaID("1111111101010000000000000000000000000000"), "localhost:8000")
 	newContact.distance = newContact.ID.CalcDistance(target.ID)
 	lookup.updateShortlistIfCloser(&newContact)
 	assert.Equal(t,20, len(lookup.shortlist), "Size should be 20")
