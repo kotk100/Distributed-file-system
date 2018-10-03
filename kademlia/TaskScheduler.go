@@ -28,7 +28,7 @@ type PeriodicTasks struct {
 func CreatePeriodicTasks() *PeriodicTasks {
 	periodicTasks := &PeriodicTasks{}
 	periodicTasks.treeMap = treemap.NewWith(utils.TimeComparator)
-	periodicTasks.ch = make(chan bool)
+	periodicTasks.ch = make(chan bool,1)
 
 	// Create go routine that will service tasks
 	go periodicTasks.handleTasks()

@@ -98,7 +98,9 @@ func CreateNewStoreForRepublish(fileHash string) *Store {
 	hash := stringToHash(fileHash)
 	store.filehash = hash
 
-	store.filename = getStringFileByHash(fileHash)
+	filePath := getStringFileByHash(fileHash)
+	filePathPart := strings.Split(filePath,"/")
+	store.filename = filePathPart[len(filePathPart)-1]
 	store.fileLength = getFileLength(store.filename)
 
 	return store
