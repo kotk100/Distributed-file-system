@@ -8,13 +8,15 @@ import (
 	log "github.com/sirupsen/logrus"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"time"
 )
 
 type Store struct {
-	filename string
-	filehash *[20]byte
-	file     *[]byte
+	filename   string
+	filehash   *[20]byte
+	fileLength int64
 }
 
 func handleError(lenght int, err error) {
@@ -62,17 +64,7 @@ func CreateNewStore(file *[]byte, password []byte, originalFilename string) *Sto
 	store := &Store{}
 	store.filehash = createFileHash(file)
 	store.createFilename(file, password, false, originalFilename)
-	store.file = file
-
-	return store
-}
-
-func (store *Store) GetHashFile() []byte{
-	return store.filehash[:]
-}
-
-func (store *Store) StartStore() {
-	log.Info("Started STORE procedure.")
+	store.fileLength = int64(len(*file))
 
 	// TODO Store file localy with pin set, should we pin file on publisher?
 	// TODO how to store file on first node that is the publisher so that the whole file doesn't have to be in memory
@@ -83,18 +75,68 @@ func (store *Store) StartStore() {
 		log.WithFields(log.Fields{
 			"Filename": filename,
 		}).Error("Failed to create a fileWriter.")
+
+		return nil
 	}
 
-	err := fileWriter.StoreFileChunk(store.file)
+	err := fileWriter.StoreFileChunk(file)
 	fileWriter.close()
 	if err {
 		log.WithFields(log.Fields{
 			"Filename": filename,
 		}).Error("Failed writing to file.")
+
+		return nil
 	}
+
+	return store
+}
+
+func CreateNewStoreForRepublish(fileHash string) *Store {
+	store := &Store{}
+
+	hash := stringToHash(fileHash)
+	store.filehash = hash
+
+	store.filename = getStringFileByHash(fileHash)
+	store.fileLength = getFileLength(store.filename)
+
+	return store
+}
+
+func (store *Store) GetHashFile() []byte {
+	return store.filehash[:]
+}
+
+func (store *Store) StartStore() {
+	log.Info("Started STORE procedure.")
 
 	target := Contact{}
 	target.ID = KademliaIDFromSlice(store.filehash[:])
+
+	// Create periodic task for republishing
+	republishTask := &Task{}
+	republishTask.taskType = RefreshBucket
+	republishTask.id = hashToString(store.filehash[:])
+
+	timeString := os.Getenv("ORG_REPUBLISH_TIME")
+	timeSeconds, err := strconv.Atoi(timeString)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"Error": err,
+		}).Error("Failer to convert string to int")
+	}
+	republishTask.executeEvery = time.Duration(timeSeconds) * time.Second
+
+	repTask := &RepublishTask{}
+	republishTask.executor = repTask
+	timeToExecute := time.Now().Add(republishTask.executeEvery)
+
+	PeriodicTasksReference.addTask(&timeToExecute, republishTask)
+
+	// Create periodic task for file expiration
+	// TODO create expiry task
+	// TODO expiry time should be calculated dynamicaly
 
 	// Find k closest nodes to store file on
 	// Returns k closest to callback processKClosest in this file
@@ -192,6 +234,28 @@ func answerStoreRequest(rpc *protocol.RPC) {
 			errorStoreAnswerWraper(network.SendStoreAnswerMessage(protocol.StoreAnswer_ERROR, other, id, &rpc.OriginalSender))
 		} else {
 			errorStoreAnswerWraper(network.SendStoreAnswerMessage(protocol.StoreAnswer_OK, other, id, &rpc.OriginalSender))
+
+			// Create periodic tasks for republishing and expiration
+			republishTask := &Task{}
+			republishTask.taskType = RefreshBucket
+			republishTask.id = getHashFromFilename(store.Filename)
+
+			timeString := os.Getenv("REPUBLISH_TIME")
+			timeSeconds, err := strconv.Atoi(timeString)
+			if err != nil {
+				log.WithFields(log.Fields{
+					"Error": err,
+				}).Error("Failer to convert string to int")
+			}
+			republishTask.executeEvery = time.Duration(timeSeconds) * time.Second
+
+			repTask := &RepublishTask{}
+			republishTask.executor = repTask
+			timeToExecute := time.Now().Add(republishTask.executeEvery)
+
+			PeriodicTasksReference.addTask(&timeToExecute, republishTask)
+
+			// TODO Create periodic tasks for expiration
 		}
 	}
 }
@@ -279,17 +343,49 @@ func createFileReader(filehash *[20]byte) *FileReader {
 	return reader
 }
 
+func getFileLength(filename string) int64 {
+	fi, err := os.Stat("/var/File_storage/" + filename)
+
+	if err != nil {
+		log.WithFields(log.Fields{
+			"err": err,
+		}).Error("Error getting file length.")
+	}
+	// get the size
+	return fi.Size()
+}
+
 func hashToString(hash []byte) string {
 	return hex.EncodeToString(hash)
 }
 
-func checkFileExists(filename string) bool {
-	s := strings.Split(filename, ":")
-	filehash := s[0]
-	return checkFileExistsHash(filehash)
+func stringToHash(fileHash string) *[20]byte {
+	hash, error := hex.DecodeString(fileHash)
+
+	if error != nil {
+		log.WithFields(log.Fields{
+			"error": error,
+		}).Error("Failed converting string back to hash.")
+
+		return nil
+	}
+
+	var byteHash [20]byte
+	copy(byteHash[:], hash)
+
+	return &byteHash
 }
 
-func getStringFileByHash(fileHash string) string{
+func getHashFromFilename(filename string) string {
+	s := strings.Split(filename, ":")
+	return s[0]
+}
+
+func checkFileExists(filename string) bool {
+	return checkFileExistsHash(getHashFromFilename(filename))
+}
+
+func getStringFileByHash(fileHash string) string {
 	matches, err := filepath.Glob("/var/File_storage/" + fileHash + ":*")
 	if err != nil {
 		log.WithFields(log.Fields{
@@ -297,7 +393,7 @@ func getStringFileByHash(fileHash string) string{
 		}).Error("Error getting filenames.")
 		return ""
 	}
-	if len(matches)==0{
+	if len(matches) == 0 {
 		return ""
 	}
 	return matches[0]

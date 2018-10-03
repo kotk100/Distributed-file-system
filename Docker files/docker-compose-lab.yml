@@ -9,6 +9,8 @@ services:
       LISTEN_PORT: ":44135"
       FILE_TRANSFER_PORT: ":44589"
       REPUBLISH_TIME: 3600
+      ORG_REPUBLISH_TIME: 86400
+      EXPARATION_TIME: 86400
     depends_on:
       - "bootstrapingNode"
       - "kademlia_network"
@@ -31,6 +33,8 @@ services:
       LISTEN_PORT: ":44135"
       FILE_TRANSFER_PORT: ":44589"
       REPUBLISH_TIME: 3600
+      ORG_REPUBLISH_TIME: 86400
+      EXPARATION_TIME: 86400
     depends_on:
       - "kademlia_network"
     deploy:
