@@ -1,7 +1,6 @@
 package kademlia
 
 import (
-	"fmt"
 	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
@@ -28,16 +27,13 @@ func TestAddTask(t *testing.T){
 
 func TestGetNextTasks(t *testing.T){
 	periodicTasks := CreatePeriodicTasks()
-	fmt.Println("test 1")
 	task := createTaskForTest(60 * time.Minute)
 	timeToExecute := time.Now().Add(task.executeEvery)
 	periodicTasks.addTask(&timeToExecute,task)
-	fmt.Println("test 2")
 
 	task2 := createTaskForTest(1 * time.Minute)
 	timeToExecute2 := time.Now().Add(task2.executeEvery)
 	periodicTasks.addTask(&timeToExecute2,task2)
-	fmt.Println("test 3")
 
 	task3 := createTaskForTest(30 * time.Minute)
 	timeToExecute3 := time.Now().Add(task3.executeEvery)
@@ -55,11 +51,7 @@ func TestUpdateTask(t *testing.T){
 	timeToExecute := time.Now().Add(task.executeEvery)
 	periodicTasks.addTask(&timeToExecute,task)
 
-	newTimeToExecute := time.Now().Add(1 * time.Minute)
-	updated := periodicTasks.updateTask(task,&newTimeToExecute)
+	updated := periodicTasks.updateTask(task)
 
 	assert.Equal(t, true, updated, "should have the task")
-	_,found := periodicTasks.treeMap.Get(newTimeToExecute)
-	assert.Equal(t, true, found, "should have the task")
-
 }
