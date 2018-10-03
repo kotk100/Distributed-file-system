@@ -21,6 +21,7 @@ func TestStopTimeout(t *testing.T) {
 
 	time.Sleep(4 * time.Second)
 	timeout.stop()
+	time.Sleep(2 * time.Second)
 
 	assert.Equal(t, false, timeout.isTimeout, "should not be time out")
 }

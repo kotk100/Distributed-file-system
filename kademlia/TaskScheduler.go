@@ -28,6 +28,7 @@ type PeriodicTasks struct {
 func CreatePeriodicTasks() *PeriodicTasks {
 	periodicTasks := &PeriodicTasks{}
 	periodicTasks.treeMap = treemap.NewWith(utils.TimeComparator)
+	periodicTasks.ch = make(chan bool)
 
 	// Create go routine that will service tasks
 	go periodicTasks.handleTasks()
@@ -52,6 +53,7 @@ func (periodicTasks *PeriodicTasks) getNextTask() (key, task interface{}) {
 
 // Handle all tasks and execute them at a appropriate time
 func (periodicTasks *PeriodicTasks) handleTasks() {
+	log.Info("Start handling.")
 	// Repeat forever
 	for {
 		key, taskRet := periodicTasks.getNextTask()
@@ -62,6 +64,8 @@ func (periodicTasks *PeriodicTasks) handleTasks() {
 
 			taskClock := NewTaskClock(24*3600*time.Second, periodicTasks.ch)
 			taskClock.run()
+
+			log.Info("stop waiting.")
 		} else {
 			// Cast returned results
 			timeToExecute, task := castToTimeAndTask(key, taskRet)
@@ -100,7 +104,9 @@ func (periodicTasks *PeriodicTasks) handleTasks() {
 				newTime := time.Now().Add(task.executeEvery)
 				periodicTasks.updateTask(&task, &newTime)
 			} else {
+				periodicTasks.mapLock.Lock()
 				periodicTasks.treeMap.Remove(timeToExecute)
+				periodicTasks.mapLock.Unlock()
 			}
 		}
 
@@ -120,7 +126,7 @@ func (periodicTasks *PeriodicTasks) addTask(timeToExecute *time.Time, task *Task
 	periodicTasks.mapLock.Lock()
 
 	// All keys need to be different in map so check if the key already exists
-	for _, found := periodicTasks.treeMap.Get(timeToExecute); found; _, found = periodicTasks.treeMap.Get(timeToExecute) {
+	for _, found := periodicTasks.treeMap.Get(*timeToExecute); found; _, found = periodicTasks.treeMap.Get(*timeToExecute) {
 		// Change time a little and retry
 		timeToExecute.Add(time.Nanosecond)
 	}
@@ -130,14 +136,16 @@ func (periodicTasks *PeriodicTasks) addTask(timeToExecute *time.Time, task *Task
 	key, taskRet := periodicTasks.treeMap.Min()
 	if key == nil || taskRet == nil {
 		needToWakeHandleTaskRoutine = true
+	} else {
+		timeToExecuteMin, _ := castToTimeAndTask(key, taskRet)
+		if timeToExecute.Before(timeToExecuteMin) {
+			needToWakeHandleTaskRoutine = true
+		}
 	}
 
-	timeToExecuteMin, _ := castToTimeAndTask(key, taskRet)
-	if timeToExecute.Before(timeToExecuteMin) {
-		needToWakeHandleTaskRoutine = true
-	}
+	periodicTasks.treeMap.Put(*timeToExecute, *task)
 
-	periodicTasks.treeMap.Put(timeToExecute, task)
+	periodicTasks.mapLock.Unlock()
 
 	// Wake up handleTask routine
 	if needToWakeHandleTaskRoutine {
@@ -147,8 +155,6 @@ func (periodicTasks *PeriodicTasks) addTask(timeToExecute *time.Time, task *Task
 	log.WithFields(log.Fields{
 		"task": task,
 	}).Info("Added new periodic task to be executed.")
-
-	periodicTasks.mapLock.Unlock()
 }
 
 func createTaskComparator(dummyTask *Task) func(interface{}, interface{}) bool {
