@@ -51,14 +51,15 @@ func main() {
 
 	// Test saving files
 	scanner := bufio.NewScanner(os.Stdin)
-	for scanner.Scan() {
+	for {
 		fmt.Println("Select command: \n1. for STORE\n2. for FIND_VALUE")
-		input := scanner.Text()
 		scanner.Scan()
+		input := scanner.Text()
 
 		switch input {
 		case "1":
 			fmt.Println("Write file contents:")
+			scanner.Scan()
 			buffer := scanner.Bytes()
 
 			store := kademlia.CreateNewStore(&buffer, nil, "example.txt")
@@ -67,8 +68,8 @@ func main() {
 			fmt.Println(store.GetHash())
 		case "2":
 			fmt.Println("Write file hash:")
-			hash := scanner.Text()
 			scanner.Scan()
+			hash := scanner.Text()
 
 			testFindValue := kademlia.NewTestLookupValue(kademlia.StringToHash(hash)[:])
 			testFindValue.StartTest()
