@@ -30,12 +30,11 @@ func (findNodeRequestExecutor *FindNodeRequestExecutor) execute() {
 		}
 	} else {
 		timeout := NewTimeout(findNodeRequestExecutor.id, findNodeRequestExecutor.ch)
-		timeOutManager.insertAndStart(timeout)
+		timeout.start()
 		// Recieve response message through channel
 		rpc := <-findNodeRequestExecutor.ch
-		if optionalTimeout := timeOutManager.tryGetAndRemoveTimeOut(findNodeRequestExecutor.id); optionalTimeout != nil {
-			optionalTimeout.stop()
-		}
+		timeout.stop()
+
 		log.Info("Received FindNode message response.")
 
 		if findNodeRequestExecutor.callback != nil {

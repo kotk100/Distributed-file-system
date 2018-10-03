@@ -38,11 +38,9 @@ func (pingBucketRequestExecutor *PingBucketRequestExecutor) execute() {
 		destroyRoutine(pingBucketRequestExecutor.id)
 	} else {
 		timeout := NewTimeout(pingBucketRequestExecutor.id, pingBucketRequestExecutor.ch)
-		timeOutManager.insertAndStart(timeout)
+		timeout.start()
 		rpc := <-pingBucketRequestExecutor.ch
-		if optionalTimeout := timeOutManager.tryGetAndRemoveTimeOut(pingBucketRequestExecutor.id); optionalTimeout != nil {
-			optionalTimeout.stop()
-		}
+		timeout.stop()
 		//timeout
 		pingBucketRequestExecutor.bucket.muxAccessBucket.Lock()
 		if element != nil {

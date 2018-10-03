@@ -28,12 +28,11 @@ func (requestExecutorPing *PingRequestExecutor) execute() {
 		requestExecutorPing.pingCallback.pingResult(false)
 	} else {
 		timeout := NewTimeout(requestExecutorPing.id, requestExecutorPing.ch)
-		timeOutManager.insertAndStart(timeout)
+		timeout.start()
 		// Recieve response message through channel
 		rpc := <-requestExecutorPing.ch
-		if optionalTimeout := timeOutManager.tryGetAndRemoveTimeOut(requestExecutorPing.id); optionalTimeout != nil {
-			optionalTimeout.stop()
-		}
+		timeout.stop()
+
 		log.Info("Received PING message response.")
 		if rpc == nil {
 			log.Error("ping request time out.")

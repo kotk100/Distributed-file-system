@@ -29,12 +29,11 @@ func (storeRequestExecutor *StoreRequestExecutor) execute() {
 		destroyRoutine(storeRequestExecutor.id)
 	} else {
 		timeout := NewTimeout(storeRequestExecutor.id, storeRequestExecutor.ch)
-		timeOutManager.insertAndStart(timeout)
+		timeout.start()
 		// Recieve response message through channel
 		rpc := <-storeRequestExecutor.ch
-		if optionalTimeout := timeOutManager.tryGetAndRemoveTimeOut(storeRequestExecutor.id); optionalTimeout != nil {
-			optionalTimeout.stop()
-		}
+		timeout.stop()
+
 
 		if rpc == nil {
 			log.Error("Store request time out.")
@@ -75,11 +74,10 @@ func (storeRequestExecutor *StoreRequestExecutor) execute() {
 				// Wait for response to see if saving file succeded
 				// Recieve response message through channel
 				timeout := NewTimeout(storeRequestExecutor.id, storeRequestExecutor.ch)
-				timeOutManager.insertAndStart(timeout)
+				timeout.start()
 				rpc := <-storeRequestExecutor.ch
-				if optionalTimeout := timeOutManager.tryGetAndRemoveTimeOut(storeRequestExecutor.id); optionalTimeout != nil {
-					optionalTimeout.stop()
-				}
+				timeout.stop()
+
 
 				if rpc == nil {
 					log.Error("Sending file time out. No response recieved.")
