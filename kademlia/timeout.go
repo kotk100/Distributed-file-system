@@ -29,7 +29,7 @@ func (timeout *Timeout) run() {
 	select {
 	case <-timeout.timeoutStop:
 		return
-	case <-time.After(10 * time.Second):
+	case <-time.After(5 * time.Second):
 		if !timeout.isTimeout {
 			timeout.isTimeout = true
 			timeout.ch <- nil

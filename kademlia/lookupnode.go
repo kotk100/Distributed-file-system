@@ -42,13 +42,13 @@ func NewLookupNode(target Contact, lookupNodeCallback LookupNodeCallback) *Looku
 	return lookup
 }
 
-func NewLookupNodeWithCustomSender(target Contact, lookupNodeCallback LookupNodeCallback,lookNodeSender LookNodeSender) *LookupNode {
-	lookup := NewLookupNode(target,lookupNodeCallback)
+func NewLookupNodeWithCustomSender(target Contact, lookupNodeCallback LookupNodeCallback, lookNodeSender LookNodeSender) *LookupNode {
+	lookup := NewLookupNode(target, lookupNodeCallback)
 	lookup.setLookUpNodeSender(lookNodeSender)
 	return lookup
 }
 
-func (lookupNode *LookupNode) setLookUpNodeSender(lookNodeSender LookNodeSender){
+func (lookupNode *LookupNode) setLookUpNodeSender(lookNodeSender LookNodeSender) {
 	lookupNode.lookNodeSender = &lookNodeSender
 }
 
@@ -91,7 +91,7 @@ func (lookupNode *LookupNode) successRequest(contactAsked Contact, KClosestOfTar
 	}
 }
 
-func (lookupNode *LookupNode) stop(){
+func (lookupNode *LookupNode) stop() {
 	lookupNode.lookupNodeParallelism.stop()
 }
 
@@ -105,7 +105,7 @@ func random(min, max int) int {
 	return rand.Intn(max-min) + min
 }
 
-func (lookupNode *LookupNode) sendLookNode(target *KademliaID, contact *Contact){
+func (lookupNode *LookupNode) sendLookNode(target *KademliaID, contact *Contact) {
 	SendAndReceiveFindNode(lookupNode, lookupNode.target.ID, contact)
 }
 
@@ -131,7 +131,18 @@ func (lookupNode *LookupNode) sendFindNodeRequest() {
 	} else {
 		lookupNode.mux.Unlock()
 	}
+}
 
+func (lookupNode *LookupNode) parallelismSendFindNodeRequest() {
+	lookupNode.sendFindNodeRequest()
+	if lookupNode.isKClosestContactHasBeenFound() {
+		log.WithFields(log.Fields{
+			"KClosestOfTarget": lookupNode.shortlist,
+		}).Info("Find node return k closest.")
+		(*lookupNode.lookupNodeCallback).processKClosest(lookupNode.shortlist)
+	} else {
+		lookupNode.lookupNodeParallelism.start()
+	}
 }
 
 func (lookupNode *LookupNode) handleNewContact(contact Contact) {
@@ -143,7 +154,7 @@ func (lookupNode *LookupNode) handleNewContact(contact Contact) {
 	lookupNode.mux.Unlock()
 }
 
-func (lookupNode *LookupNode) isItMe(contact *Contact) bool{
+func (lookupNode *LookupNode) isItMe(contact *Contact) bool {
 	return MyRoutingTable.me.ID.Equals(contact.ID)
 }
 

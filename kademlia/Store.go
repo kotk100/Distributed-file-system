@@ -109,7 +109,9 @@ func (store *Store) GetHash() string {
 }
 
 func (store *Store) StartStore() {
-	log.Info("Started STORE procedure.")
+	log.WithFields(log.Fields{
+		"file hash": hashToString(store.filehash[:]),
+	}).Info("Started STORE procedure.")
 
 	target := Contact{}
 	target.ID = KademliaIDFromSlice(store.filehash[:])

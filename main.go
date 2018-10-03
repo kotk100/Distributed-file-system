@@ -71,8 +71,8 @@ func main() {
 			scanner.Scan()
 			hash := scanner.Text()
 
-			testFindValue := kademlia.NewTestLookupValue(kademlia.StringToHash(hash)[:])
-			testFindValue.StartTest()
+			testFindValue := kademlia.NewLookupValueManager(kademlia.StringToHash(hash)[:])
+			testFindValue.FindValue()
 		default:
 			continue
 		}

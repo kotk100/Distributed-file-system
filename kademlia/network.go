@@ -6,6 +6,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"math/rand"
 	"net"
+	"os"
 	"strings"
 )
 
@@ -457,7 +458,7 @@ func (network *Network) RecieveFile(port string, filename string, contact *Conta
 	return false
 }
 
-func (network *Network) retrieveFile(port string, fileHash []byte, filename string, contact *Contact, fileSize int64, originalSender *[]byte) bool {
+func (network *Network) retrieveFile(port string, fileHash []byte, filename string, contact *Contact, fileSize int64, originalSender *[]byte, contactToSendStore *Contact) bool {
 	server, err := net.Listen("tcp", port)
 
 	if err != nil {
@@ -499,6 +500,17 @@ func (network *Network) retrieveFile(port string, fileHash []byte, filename stri
 		"Contact": contact,
 	}).Debug("Client connected.")
 
+	// Open file for writing
+	fileWriter := createFileWriter(filename)
+	if fileWriter == nil {
+		log.WithFields(log.Fields{
+			"filename": filename,
+		}).Error("Failed to create file for writing.")
+		return true
+	}
+
+	defer fileWriter.close()
+
 	var receivedBytes int64 = 0
 	buffer := make([]byte, BUFFERSIZE)
 
@@ -513,24 +525,72 @@ func (network *Network) retrieveFile(port string, fileHash []byte, filename stri
 
 			return true
 		}
-		log.WithFields(log.Fields{
-			"fileSize":      fileSize,
-			"receivedBytes": receivedBytes,
-		}).Info("receive send file answer from client")
+
 		// Store last part of file
 		if (fileSize - receivedBytes) < BUFFERSIZE {
 			endBuffer := buffer[0:(fileSize - receivedBytes)]
-			log.WithFields(log.Fields{
-				"value": string(endBuffer),
-			}).Info("RECEIVED FILE VALUE.------")
+			err := fileWriter.StoreFileChunk(&endBuffer)
+			if err {
+				log.WithFields(log.Fields{
+					"buffer": &buffer,
+				}).Error("Failed to write bytes to file.")
+
+				return true
+			}
+
 			break
 		} else {
-			log.WithFields(log.Fields{
-				"value": string(buffer),
-			}).Info("RECEIVED FILE VALUE.------")
+			err := fileWriter.StoreFileChunk(&buffer)
+			if err {
+				log.WithFields(log.Fields{
+					"buffer": &buffer,
+				}).Error("Failed to write bytes to file.")
+
+				return true
+			}
 			receivedBytes += BUFFERSIZE
+
 			if fileSize == receivedBytes {
 				break
+			}
+		}
+	}
+
+	stringPathFindValue := getPathOfFileFromHash(hashToString(fileHash))
+	file, err := os.Open(stringPathFindValue)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"file string": stringPathFindValue,
+		}).Info("Error open file")
+	} else {
+		fileInfo, err := file.Stat()
+		if err != nil {
+			log.WithFields(log.Fields{
+				"file string": stringPathFindValue,
+			}).Info("Error to get file info")
+		} else {
+			fileContents := make([]byte, fileInfo.Size())
+			_, err := file.Read(fileContents)
+			if err != nil {
+				log.WithFields(log.Fields{
+					"file string": stringPathFindValue,
+				}).Info("Error to get file contents")
+			} else {
+				log.WithFields(log.Fields{
+					"Filename": string(fileContents),
+				}).Info("FILE VALUE-----")
+				if contactToSendStore != nil {
+					storeEx := &StoreRequestExecutor{}
+					store := &Store{}
+					store.filename = filename
+					var filehashStore [20]byte
+					copy(filehashStore[:],fileHash[:])
+					store.filehash = &filehashStore
+					store.fileLength = fileSize
+					storeEx.store = store
+					storeEx.contact = *contactToSendStore
+					createRoutine(storeEx)
+				}
 			}
 		}
 	}

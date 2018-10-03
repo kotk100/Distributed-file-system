@@ -1,21 +1,21 @@
 package kademlia
 
 import (
-	log "github.com/sirupsen/logrus"
-	"sync"
 	"./protocol"
+	log "github.com/sirupsen/logrus"
+	"os"
+	"sync"
 )
 
-//TODO : When an iterativeFindValue succeeds, the initiator must store the key/value pair at the closest node seen which did not return the value.
-
 type LookupValueCallback interface {
-	contactWithFile(contact Contact,findValueRpc *protocol.FindValue)
+	contactWithFile(contact Contact, findValueRpc *protocol.FindValue, contacts []Contact)
+	fileContents(fileContents []byte)
 	noContactWithFileFound(contacts []Contact)
 }
 
 type FindValueRequestCallback interface {
 	errorRequest(contact Contact)
-	successRequest(contact Contact, contacts []Contact,findValueRpc *protocol.FindValue)
+	successRequest(contact Contact, contacts []Contact, findValueRpc *protocol.FindValue)
 }
 
 type LookupValue struct {
@@ -37,8 +37,35 @@ func NewLookupValue(fileHash []byte, lookupValueCallback LookupValueCallback) *L
 	return lookup
 }
 
-func (lookupValue *LookupValue) start(){
-	lookupValue.lookupNode.Start()
+func (lookupValue *LookupValue) start() {
+	if checkFileExistsHash(hashToString(lookupValue.fileHash)) {
+		stringPath := getPathOfFileFromHash(hashToString(lookupValue.fileHash))
+		file, error := os.Open(stringPath)
+		if error != nil {
+			log.WithFields(log.Fields{
+				"file string": stringPath,
+			}).Info("Error open file")
+		} else {
+			fileInfo, error := file.Stat()
+			if error != nil {
+				log.WithFields(log.Fields{
+					"file string": stringPath,
+				}).Info("Error to get file info")
+			} else {
+				fileContents := make([]byte, fileInfo.Size())
+				_, err := file.Read(fileContents)
+				if err != nil {
+					log.WithFields(log.Fields{
+						"file string": stringPath,
+					}).Info("Error to get file contents")
+				} else {
+					(*lookupValue.lookupValueCallback).fileContents(fileContents)
+				}
+			}
+		}
+	} else {
+		lookupValue.lookupNode.Start()
+	}
 }
 
 func (lookupValue *LookupValue) errorRequest(contact Contact) {
@@ -50,11 +77,11 @@ func (lookupValue *LookupValue) successRequest(contact Contact, contacts []Conta
 	if ! lookupValue.hasBeenFound {
 		if findValueRpc.HaveTheFile {
 			log.WithFields(log.Fields{
-				"Contact":  contact,
+				"Contact": contact,
 			}).Info("Found contact which contains the file")
 			lookupValue.lookupNode.stop()
 			lookupValue.hasBeenFound = true
-			(*lookupValue.lookupValueCallback).contactWithFile(contact,findValueRpc)
+			(*lookupValue.lookupValueCallback).contactWithFile(contact, findValueRpc, contacts)
 		} else {
 			lookupValue.lookupNode.successRequest(contact, contacts)
 		}
@@ -63,17 +90,18 @@ func (lookupValue *LookupValue) successRequest(contact Contact, contacts []Conta
 }
 
 func (lookupValue *LookupValue) processKClosest(KClosestOfTarget []LookupNodeContact) {
-	contacts := make([]Contact,0)
-	for _,v := range KClosestOfTarget{
-		contacts=append(contacts,v.contact)
+	log.Info("lookup value no node with file found")
+	contacts := make([]Contact, 0)
+	for _, v := range KClosestOfTarget {
+		contacts = append(contacts, v.contact)
 	}
 	(*lookupValue.lookupValueCallback).noContactWithFileFound(contacts)
 }
 
 func (lookupValue *LookupValue) sendLookNode(target *KademliaID, contact *Contact) {
 	log.WithFields(log.Fields{
-		"lookupValue.fileHash":  lookupValue.fileHash,
-		"lookupValue.fileHash string ":hashToString(lookupValue.fileHash),
+		"lookupValue.fileHash":         lookupValue.fileHash,
+		"lookupValue.fileHash string ": hashToString(lookupValue.fileHash),
 	}).Info("Send find value")
 	SendAndReceiveFindValue(lookupValue, lookupValue.fileHash, contact)
 }
