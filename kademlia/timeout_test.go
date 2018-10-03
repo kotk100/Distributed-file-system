@@ -17,15 +17,12 @@ func TestStopTimeout(t *testing.T) {
 	c := make(chan *protocol.RPC)
 
 	timeout := NewTimeout(messageID, c)
-	timeOutManager := NewTimeOutManager()
-	timeOutManager.insertAndStart(timeout)
+	timeout.start()
 
 	time.Sleep(4 * time.Second)
+	timeout.stop()
 
-	timeoutEnd := timeOutManager.tryGetAndRemoveTimeOut(messageID)
-	timeoutEnd.stop()
-
-	assert.Equal(t, timeout, timeoutEnd, "time out should be not removed")
+	assert.Equal(t, false, timeout.isTimeout, "should not be time out")
 }
 
 func TestTimeout(t *testing.T) {
@@ -37,12 +34,9 @@ func TestTimeout(t *testing.T) {
 	c := make(chan *protocol.RPC)
 
 	timeout := NewTimeout(messageID, c)
-	timeOutManager := NewTimeOutManager()
-	timeOutManager.insertAndStart(timeout)
+	timeout.start()
 
 	time.Sleep(12 * time.Second)
 
-	timeoutEnd := timeOutManager.tryGetAndRemoveTimeOut(messageID)
-
-	assert.Equal(t, nil, timeoutEnd, "time out should be removed")
+	assert.Equal(t, true, timeout.isTimeout, "should be time out")
 }
