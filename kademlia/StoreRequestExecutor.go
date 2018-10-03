@@ -17,7 +17,7 @@ func (storeRequestExecutor *StoreRequestExecutor) execute() {
 	// Send store message to other node
 	var network Network
 	senderID := MyRoutingTable.GetMe().ID[:]
-	error := network.SendStoreMessage(storeRequestExecutor.store.filename, int64(len(*storeRequestExecutor.store.file)), &storeRequestExecutor.contact, storeRequestExecutor.id, &senderID)
+	error := network.SendStoreMessage(storeRequestExecutor.store.filename, storeRequestExecutor.store.fileLength, &storeRequestExecutor.contact, storeRequestExecutor.id, &senderID)
 	log.WithFields(log.Fields{
 		"Contact":  storeRequestExecutor.contact,
 		"Filename": storeRequestExecutor.store.filename,
@@ -58,7 +58,7 @@ func (storeRequestExecutor *StoreRequestExecutor) execute() {
 					"Contact":  storeRequestExecutor.contact,
 					"Filename": storeRequestExecutor.store.filename,
 				}).Info("Send file to contact.")
-				error = network.SendFile(storeRequestExecutor.store.filehash, &storeRequestExecutor.contact, port, int64(len(*storeRequestExecutor.store.file)))
+				error = network.SendFile(storeRequestExecutor.store.filehash, &storeRequestExecutor.contact, port, storeRequestExecutor.store.fileLength)
 				if error {
 					log.WithFields(log.Fields{
 						"Other node": storeRequestExecutor.contact,

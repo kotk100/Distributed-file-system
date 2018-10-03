@@ -94,7 +94,8 @@ func (periodicTasks *PeriodicTasks) handleTasks() {
 			}
 
 			// TODO execute task
-			task.executor.execute()
+			task.executor.setTask(&task)
+			go task.executor.execute()
 			log.WithFields(log.Fields{
 				"task": task,
 			}).Info("Task executed.")

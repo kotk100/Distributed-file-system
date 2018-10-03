@@ -4,7 +4,7 @@ import "time"
 
 type TaskExecutor interface {
 	execute()
-	// TODO
+	setTask(task *Task)
 }
 
 type TaskType int
