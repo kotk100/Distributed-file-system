@@ -20,6 +20,10 @@ func main() {
 	//kademlia.Listen("10.0.0.1", 4658)
 	log.Info("Hello, World!")
 
+	// Create a
+	periodicTasks := kademlia.CreatePeriodicTasks()
+	kademlia.PeriodicTasksReference = periodicTasks
+
 	// Get bootstrap node address
 	dns_name := os.Getenv("BOOTSTRAP_ADDR")
 	port := os.Getenv("LISTEN_PORT")
@@ -55,12 +59,11 @@ func main() {
 
 		time.Sleep(10 * time.Second)
 
-		testFindValue:=kademlia.NewTestLookupValue(store.GetHashFile())
+		testFindValue := kademlia.NewTestLookupValue(store.GetHashFile())
 		testFindValue.StartTest()
 		//check node if is not contains file
 		//if not launch find value
 		//display contact which contain file
-
 	}
 
 	// Wait forever

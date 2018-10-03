@@ -2,25 +2,16 @@ package kademlia
 
 import "time"
 
-type TaskClockAlarm interface {
-	alarm()
-}
-
 type TaskClock struct {
-	taskClockStop  chan bool
-	timeToWait     time.Duration
-	taskClockAlarm *TaskClockAlarm
+	taskClockStop chan bool
+	timeToWait    time.Duration
 }
 
-func NewTaskClock(timeToWait time.Duration, taskClockAlarm TaskClockAlarm) *TaskClock {
+func NewTaskClock(timeToWait time.Duration, ch chan bool) *TaskClock {
 	taskClock := &TaskClock{}
 	taskClock.timeToWait = timeToWait
-	taskClock.taskClockAlarm = &taskClockAlarm
+	taskClock.taskClockStop = ch
 	return taskClock
-}
-
-func (taskClock *TaskClock) start() {
-	go taskClock.run()
 }
 
 func (taskClock *TaskClock) run() {
@@ -28,11 +19,7 @@ func (taskClock *TaskClock) run() {
 	case <-taskClock.taskClockStop:
 		return
 	case <-time.After(taskClock.timeToWait):
-		(*taskClock.taskClockAlarm).alarm()
+		taskClock.taskClockStop <- true
 		return
 	}
-}
-
-func (taskClock *TaskClock) stop() {
-	taskClock.taskClockStop <- true
 }
