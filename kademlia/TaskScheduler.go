@@ -59,6 +59,8 @@ func (periodicTasks *PeriodicTasks) handleTasks() {
 			taskClock.run()
 
 			log.Info("HandleTask: Waiting complete, checking for new tasks.")
+			// Read from channel, discard value
+			_ = <-periodicTasks.ch
 		} else {
 			// Cast returned results
 			timeToExecute, task := castToTimeAndTask(key, taskRet)
@@ -71,6 +73,8 @@ func (periodicTasks *PeriodicTasks) handleTasks() {
 
 			taskClock := NewTaskClock(timeToWait, periodicTasks.ch)
 			taskClock.run()
+
+			log.Info("Waiting for task complete.")
 
 			// Check if the task is ready to execute or if another routine woke up this task
 			isTimeout := <-periodicTasks.ch
@@ -86,8 +90,6 @@ func (periodicTasks *PeriodicTasks) handleTasks() {
 				}
 			}
 
-			log.Info("Waiting for task complete.")
-
 			task.executor.setTask(&task)
 			go task.executor.execute()
 			log.WithFields(log.Fields{
@@ -95,7 +97,7 @@ func (periodicTasks *PeriodicTasks) handleTasks() {
 			}).Info("Task executed.")
 
 			// Remove task or reschedule
-			if task.executeEvery.Nanoseconds() != 0 {
+			if task.executeEvery.Nanoseconds() != 0 && task.taskType != ExpireFile {
 				periodicTasks.updateTask(&task)
 			} else {
 				periodicTasks.mapLock.Lock()
@@ -147,7 +149,11 @@ func (periodicTasks *PeriodicTasks) addTaskInternal(timeToExecute *time.Time, ta
 
 	// Wake up handleTask routine
 	if needToWakeHandleTaskRoutine || forceWakeUp {
-		periodicTasks.ch <- false
+		// Non blocking write
+		select {
+		case periodicTasks.ch <- false:
+		default:
+		}
 	}
 
 	log.WithFields(log.Fields{
@@ -225,7 +231,11 @@ func (periodicTasks *PeriodicTasks) removeTask(dummyTask *Task) bool {
 
 	// Wake up handleTask routine
 	if needToWakeHandleTaskRoutine {
-		periodicTasks.ch <- false
+		// Non blocking write
+		select {
+		case periodicTasks.ch <- false:
+		default:
+		}
 	}
 
 	log.WithFields(log.Fields{

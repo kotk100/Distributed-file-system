@@ -1,6 +1,9 @@
 package kademlia
 
-import "time"
+import (
+	log "github.com/sirupsen/logrus"
+	"time"
+)
 
 type TaskClock struct {
 	taskClockStop chan bool
@@ -16,10 +19,23 @@ func NewTaskClock(timeToWait time.Duration, ch chan bool) *TaskClock {
 
 func (taskClock *TaskClock) run() {
 	select {
-	case <-taskClock.taskClockStop:
+	case res := <-taskClock.taskClockStop:
+		log.WithFields(log.Fields{
+			"res": res,
+		}).Debug("Recieved message from channel")
+		// Non blocking write
+		select {
+		case taskClock.taskClockStop <- false:
+		default:
+		}
+
 		return
 	case <-time.After(taskClock.timeToWait):
-		taskClock.taskClockStop <- true
+		// Non blocking write
+		select {
+		case taskClock.taskClockStop <- true:
+		default:
+		}
 		return
 	}
 }
