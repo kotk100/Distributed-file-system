@@ -66,7 +66,7 @@ func CreateNewStore(file *[]byte, password []byte, originalFilename string) *Sto
 	store.createFilename(file, password, false, originalFilename)
 	store.fileLength = int64(len(*file))
 
-	// TODO Store file localy with pin set, should we pin file on publisher?
+	// Store file localy with pin set
 	// TODO how to store file on first node that is the publisher so that the whole file doesn't have to be in memory
 	filename := store.filename[:len(store.filename)-1] + "1"
 
@@ -95,19 +95,17 @@ func CreateNewStore(file *[]byte, password []byte, originalFilename string) *Sto
 func CreateNewStoreForRepublish(fileHash string) *Store {
 	store := &Store{}
 
-	hash := stringToHash(fileHash)
+	hash := StringToHash(fileHash)
 	store.filehash = hash
 
-	filePath := getStringFileByHash(fileHash)
-	filePathPart := strings.Split(filePath,"/")
-	store.filename = filePathPart[len(filePathPart)-1]
+	store.filename = getFilenameFromHash(fileHash)
 	store.fileLength = getFileLength(store.filename)
 
 	return store
 }
 
-func (store *Store) GetHashFile() []byte {
-	return store.filehash[:]
+func (store *Store) GetHash() string {
+	return hashToString(store.filehash[:])
 }
 
 func (store *Store) StartStore() {
@@ -137,8 +135,25 @@ func (store *Store) StartStore() {
 	PeriodicTasksReference.addTask(&timeToExecute, republishTask)
 
 	// Create periodic task for file expiration
-	// TODO create expiry task
-	// TODO expiry time should be calculated dynamicaly
+	// TODO expiry time should be calculated dynamicaly, recalculate when a new node is added into the routing table
+	expiryTask := &Task{}
+	expiryTask.taskType = ExpireFile
+	expiryTask.id = republishTask.id
+
+	timeString = os.Getenv("EXPARATION_TIME")
+	timeSeconds, err = strconv.Atoi(timeString)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"Error": err,
+		}).Error("Failer to convert string to int")
+	}
+	expiryTask.executeEvery = time.Duration(timeSeconds) * time.Second
+
+	expTask := &FileExpirationTask{}
+	expiryTask.executor = expTask
+	timeToExecute = time.Now().Add(expiryTask.executeEvery)
+
+	PeriodicTasksReference.addTask(&timeToExecute, expiryTask)
 
 	// Find k closest nodes to store file on
 	// Returns k closest to callback processKClosest in this file
@@ -222,6 +237,16 @@ func answerStoreRequest(rpc *protocol.RPC) {
 	// Check if file already exsists
 	if checkFileExists(store.Filename) {
 		errorStoreAnswerWraper(network.SendStoreAnswerMessage(protocol.StoreAnswer_ALREADY_STORED, other, id, &rpc.OriginalSender))
+
+		// Update periodic task for republishing and deletion
+		task := &Task{}
+		task.id = getHashFromFilename(store.Filename)
+		task.taskType = RepublishFile
+		PeriodicTasksReference.updateTask(task)
+
+		task.taskType = ExpireFile
+		PeriodicTasksReference.updateTask(task)
+
 	} else {
 		// Start listening on port and save file after connecting
 		portStr := os.Getenv("FILE_TRANSFER_PORT")
@@ -237,7 +262,7 @@ func answerStoreRequest(rpc *protocol.RPC) {
 		} else {
 			errorStoreAnswerWraper(network.SendStoreAnswerMessage(protocol.StoreAnswer_OK, other, id, &rpc.OriginalSender))
 
-			// Create periodic tasks for republishing and expiration
+			// Create periodic task for republishing
 			republishTask := &Task{}
 			republishTask.taskType = RefreshBucket
 			republishTask.id = getHashFromFilename(store.Filename)
@@ -257,12 +282,30 @@ func answerStoreRequest(rpc *protocol.RPC) {
 
 			PeriodicTasksReference.addTask(&timeToExecute, republishTask)
 
-			// TODO Create periodic tasks for expiration
+			// Create periodic tasks for expiration
+			expiryTask := &Task{}
+			expiryTask.taskType = ExpireFile
+			expiryTask.id = republishTask.id
+
+			timeString = os.Getenv("EXPARATION_TIME")
+			timeSeconds, err = strconv.Atoi(timeString)
+			if err != nil {
+				log.WithFields(log.Fields{
+					"Error": err,
+				}).Error("Failer to convert string to int")
+			}
+			expiryTask.executeEvery = time.Duration(timeSeconds) * time.Second
+
+			expTask := &FileExpirationTask{}
+			expiryTask.executor = expTask
+			timeToExecute = time.Now().Add(expiryTask.executeEvery)
+
+			PeriodicTasksReference.addTask(&timeToExecute, expiryTask)
 		}
 	}
 }
 
-// TODO use locks to lock file access?
+// TODO use locks to lock file access, so that a file isn't deleted while it is being read
 type FileWriter struct {
 	file *os.File
 }
@@ -361,7 +404,7 @@ func hashToString(hash []byte) string {
 	return hex.EncodeToString(hash)
 }
 
-func stringToHash(fileHash string) *[20]byte {
+func StringToHash(fileHash string) *[20]byte {
 	hash, error := hex.DecodeString(fileHash)
 
 	if error != nil {
@@ -387,7 +430,14 @@ func checkFileExists(filename string) bool {
 	return checkFileExistsHash(getHashFromFilename(filename))
 }
 
-func getStringFileByHash(fileHash string) string {
+func getFilenameFromHash(fileHash string) string {
+	filePath := getPathOfFileFromHash(fileHash)
+	filePathPart := strings.Split(filePath, "/")
+
+	return filePathPart[len(filePathPart)-1]
+}
+
+func getPathOfFileFromHash(fileHash string) string {
 	matches, err := filepath.Glob("/var/File_storage/" + fileHash + ":*")
 	if err != nil {
 		log.WithFields(log.Fields{
@@ -437,4 +487,25 @@ func (fileReader *FileReader) ReadFileChunk(file *[]byte) (int, bool) {
 	}
 
 	return n, false
+}
+
+func removeFileByHash(hash string) bool {
+	log.WithFields(log.Fields{
+		"FileHash": hash,
+	}).Info("Removing file.")
+	return removeFile(getFilenameFromHash(hash))
+}
+
+func removeFile(filename string) bool {
+	err := os.Remove("/var/File_storage/" + filename)
+
+	if err != nil {
+		log.WithFields(log.Fields{
+			"Error":    err,
+			"filename": filename,
+		}).Error("Failed removing file.")
+		return false
+	}
+
+	return true
 }

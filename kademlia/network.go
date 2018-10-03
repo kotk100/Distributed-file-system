@@ -52,7 +52,6 @@ func Listen(port string) {
 	}
 	defer conn.Close()
 
-	// TODO size of buffer
 	buf := make([]byte, 2048)
 
 	// Listen for messages
@@ -424,7 +423,6 @@ func (network *Network) RecieveFile(port string, filename string, contact *Conta
 
 		// Store last part of file
 		if (fileSize - receivedBytes) < BUFFERSIZE {
-			// TODO make sure that correct part of slice is used
 			endBuffer := buffer[0:(fileSize - receivedBytes)]
 			err := fileWriter.StoreFileChunk(&endBuffer)
 			if err {
@@ -459,7 +457,7 @@ func (network *Network) RecieveFile(port string, filename string, contact *Conta
 	return false
 }
 
-func (network *Network) retrieveFile(port string,fileHash []byte, filename string, contact *Contact, fileSize int64, originalSender *[]byte) bool {
+func (network *Network) retrieveFile(port string, fileHash []byte, filename string, contact *Contact, fileSize int64, originalSender *[]byte) bool {
 	server, err := net.Listen("tcp", port)
 
 	if err != nil {
@@ -478,7 +476,7 @@ func (network *Network) retrieveFile(port string,fileHash []byte, filename strin
 	// Close connection when exiting function
 	defer server.Close()
 
-	error := network.sendSendFileRequest(contact,fileHash,fileSize)
+	error := network.sendSendFileRequest(contact, fileHash, fileSize)
 	if error {
 		log.WithFields(log.Fields{
 			"Contact": contact,
@@ -516,12 +514,11 @@ func (network *Network) retrieveFile(port string,fileHash []byte, filename strin
 			return true
 		}
 		log.WithFields(log.Fields{
-			"fileSize":   fileSize,
+			"fileSize":      fileSize,
 			"receivedBytes": receivedBytes,
 		}).Info("receive send file answer from client")
 		// Store last part of file
 		if (fileSize - receivedBytes) < BUFFERSIZE {
-			// TODO make sure that correct part of slice is used
 			endBuffer := buffer[0:(fileSize - receivedBytes)]
 			log.WithFields(log.Fields{
 				"value": string(endBuffer),
@@ -544,7 +541,7 @@ func (network *Network) retrieveFile(port string,fileHash []byte, filename strin
 	return false
 }
 
-func (network *Network) sendSendFileRequest(contact *Contact, fileHash []byte,fileSize int64) bool {
+func (network *Network) sendSendFileRequest(contact *Contact, fileHash []byte, fileSize int64) bool {
 	// Open connection
 	conn, err := net.Dial("udp", contact.Address)
 	error := false
@@ -560,7 +557,7 @@ func (network *Network) sendSendFileRequest(contact *Contact, fileHash []byte,fi
 		sendFile.IPaddress = MyRoutingTable.me.Address
 		sendFile.KademliaID = MyRoutingTable.me.ID[:]
 		sendFile.OriginalSender = MyRoutingTable.me.ID[:]
-		sendFile.FileSize=fileSize
+		sendFile.FileSize = fileSize
 		out, err := proto.Marshal(sendFile)
 		if err != nil {
 			log.WithFields(log.Fields{
@@ -572,7 +569,7 @@ func (network *Network) sendSendFileRequest(contact *Contact, fileHash []byte,fi
 			for i := 0; i < 20; i++ {
 				messageID[i] = uint8(rand.Intn(256))
 			}
-			message := network.GetRPCMessage(out, protocol.RPC_SEND_FILE, messageID[:] , MyRoutingTable.me.ID[:])
+			message := network.GetRPCMessage(out, protocol.RPC_SEND_FILE, messageID[:], MyRoutingTable.me.ID[:])
 			n, err := conn.Write(message)
 			if err != nil {
 				log.WithFields(log.Fields{

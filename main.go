@@ -3,10 +3,10 @@ package main
 import (
 	"./kademlia"
 	"bufio"
+	"fmt"
 	log "github.com/sirupsen/logrus"
 	"os"
 	"runtime"
-	"time"
 )
 
 func init() {
@@ -52,18 +52,29 @@ func main() {
 	// Test saving files
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
-		buffer := scanner.Bytes()
+		fmt.Println("Select command: \n1. for STORE\n2. for FIND_VALUE")
+		input := scanner.Text()
+		scanner.Scan()
 
-		store := kademlia.CreateNewStore(&buffer, nil, "example.txt")
-		store.StartStore()
+		switch input {
+		case "1":
+			fmt.Println("Write file contents:")
+			buffer := scanner.Bytes()
 
-		time.Sleep(10 * time.Second)
+			store := kademlia.CreateNewStore(&buffer, nil, "example.txt")
+			store.StartStore()
+			fmt.Print("File hash: ")
+			fmt.Println(store.GetHash())
+		case "2":
+			fmt.Println("Write file hash:")
+			hash := scanner.Text()
+			scanner.Scan()
 
-		testFindValue := kademlia.NewTestLookupValue(store.GetHashFile())
-		testFindValue.StartTest()
-		//check node if is not contains file
-		//if not launch find value
-		//display contact which contain file
+			testFindValue := kademlia.NewTestLookupValue(kademlia.StringToHash(hash)[:])
+			testFindValue.StartTest()
+		default:
+			continue
+		}
 	}
 
 	// Wait forever

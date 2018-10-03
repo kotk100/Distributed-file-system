@@ -34,7 +34,6 @@ func (storeRequestExecutor *StoreRequestExecutor) execute() {
 		rpc := <-storeRequestExecutor.ch
 		timeout.stop()
 
-
 		if rpc == nil {
 			log.Error("Store request time out.")
 		} else {
@@ -78,7 +77,6 @@ func (storeRequestExecutor *StoreRequestExecutor) execute() {
 				rpc := <-storeRequestExecutor.ch
 				timeout.stop()
 
-
 				if rpc == nil {
 					log.Error("Sending file time out. No response recieved.")
 				} else {
@@ -97,7 +95,7 @@ func (storeRequestExecutor *StoreRequestExecutor) execute() {
 					case protocol.StoreAnswer_OK:
 						// Do nothing
 					case protocol.StoreAnswer_ERROR:
-						// TODO what hapens if a file cant be stored on node? (for example if there is not enough space)
+						// TODO what should happen if a file cant be stored on node? (for example if there is not enough space)
 						log.WithFields(log.Fields{
 							"Other node": other,
 							"FileName":   storeRequestExecutor.store.filename,
@@ -112,7 +110,7 @@ func (storeRequestExecutor *StoreRequestExecutor) execute() {
 			case protocol.StoreAnswer_ALREADY_STORED:
 				// File already stored on node, don't have to do anything
 			case protocol.StoreAnswer_ERROR:
-				// TODO what hapens if a file cant be stored on node? (for example if there is not enough space)
+				// TODO what should happen if a file cant be stored on node? (for example if there is not enough space)
 				log.WithFields(log.Fields{
 					"Other node": other,
 					"FileName":   storeRequestExecutor.store.filename,

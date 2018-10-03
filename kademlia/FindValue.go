@@ -63,7 +63,7 @@ func answerFindValueRequest(msg *protocol.RPC) {
 	//check if node has the file set boolean
 	if checkFileExistsHash(hashToString(findValue.FileHash)) {
 
-		stringPath := getStringFileByHash(hashToString(findValue.FileHash))
+		stringPath := getPathOfFileFromHash(hashToString(findValue.FileHash))
 		file, error := os.Open(stringPath)
 		if error != nil {
 			log.WithFields(log.Fields{

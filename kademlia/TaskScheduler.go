@@ -8,14 +8,7 @@ import (
 	"time"
 )
 
-// TODO priority que of periodic tasks
-// TODO each task has a time at which it needs to be exectuted at
-// TODO each task has a function to be called to complete the tast
-// TODO the task time can be refreshed, use locks to access the priority queue (if store for key recieved reset timer)
-// TODO the tastks include:
-// TODO 	- refresh bucket
-// TODO 	- delete file
-// TODO 	- republish file
+// TODO refresh bucket
 
 var PeriodicTasksReference *PeriodicTasks
 
@@ -28,7 +21,7 @@ type PeriodicTasks struct {
 func CreatePeriodicTasks() *PeriodicTasks {
 	periodicTasks := &PeriodicTasks{}
 	periodicTasks.treeMap = treemap.NewWith(utils.TimeComparator)
-	periodicTasks.ch = make(chan bool,1)
+	periodicTasks.ch = make(chan bool, 1)
 
 	// Create go routine that will service tasks
 	go periodicTasks.handleTasks()
@@ -65,13 +58,13 @@ func (periodicTasks *PeriodicTasks) handleTasks() {
 			taskClock := NewTaskClock(24*3600*time.Second, periodicTasks.ch)
 			taskClock.run()
 
-			log.Info("stop waiting.")
+			log.Info("HandleTask: Waiting complete, checking for new tasks.")
 		} else {
 			// Cast returned results
 			timeToExecute, task := castToTimeAndTask(key, taskRet)
 
 			// Wait for task or interrupt on channel
-			timeToWait := timeToExecute.Sub(time.Now())
+			timeToWait := timeToExecute.Sub(time.Now()) //TODO What about negative values, test
 			log.WithFields(log.Fields{
 				"timeToWait": timeToWait,
 			}).Info("Waiting for next task.")
@@ -93,7 +86,8 @@ func (periodicTasks *PeriodicTasks) handleTasks() {
 				}
 			}
 
-			// TODO execute task
+			log.Info("Waiting for task complete.")
+
 			task.executor.setTask(&task)
 			go task.executor.execute()
 			log.WithFields(log.Fields{
@@ -102,8 +96,7 @@ func (periodicTasks *PeriodicTasks) handleTasks() {
 
 			// Remove task or reschedule
 			if task.executeEvery.Nanoseconds() != 0 {
-				newTime := time.Now().Add(task.executeEvery)
-				periodicTasks.updateTask(&task, &newTime)
+				periodicTasks.updateTask(&task)
 			} else {
 				periodicTasks.mapLock.Lock()
 				periodicTasks.treeMap.Remove(timeToExecute)
@@ -124,6 +117,10 @@ func createTask(taskType TaskType, id string, executor TaskExecutor) *Task {
 }
 
 func (periodicTasks *PeriodicTasks) addTask(timeToExecute *time.Time, task *Task) {
+	periodicTasks.addTaskInternal(timeToExecute, task, false)
+}
+
+func (periodicTasks *PeriodicTasks) addTaskInternal(timeToExecute *time.Time, task *Task, forceWakeUp bool) {
 	periodicTasks.mapLock.Lock()
 
 	// All keys need to be different in map so check if the key already exists
@@ -149,7 +146,7 @@ func (periodicTasks *PeriodicTasks) addTask(timeToExecute *time.Time, task *Task
 	periodicTasks.mapLock.Unlock()
 
 	// Wake up handleTask routine
-	if needToWakeHandleTaskRoutine {
+	if needToWakeHandleTaskRoutine || forceWakeUp {
 		periodicTasks.ch <- false
 	}
 
@@ -172,7 +169,7 @@ func (task *Task) taskComparator(key interface{}, value interface{}) bool {
 	return false
 }
 
-func (periodicTasks *PeriodicTasks) updateTask(dummyTask *Task, newTimeToExecute *time.Time) bool {
+func (periodicTasks *PeriodicTasks) updateTask(dummyTask *Task) bool {
 	periodicTasks.mapLock.Lock()
 	// Find the task
 	timeToExecute, task := periodicTasks.treeMap.Find(createTaskComparator(dummyTask))
@@ -181,18 +178,59 @@ func (periodicTasks *PeriodicTasks) updateTask(dummyTask *Task, newTimeToExecute
 		return false
 	}
 
+	taskC := task.(Task)
+
+	// If this is the next routine in line to be executed the handleTasks routine needs to be informed
+	needToWakeHandleTaskRoutine := false
+	if taskC.taskComparator(periodicTasks.treeMap.Min()) {
+		needToWakeHandleTaskRoutine = true
+	}
+
 	// Remove the task
 	periodicTasks.treeMap.Remove(timeToExecute)
 
-	taskC := task.(Task)
 	periodicTasks.mapLock.Unlock()
 
 	// Add the task
-	periodicTasks.addTask(newTimeToExecute, &taskC)
+	nextTimeToExecute := time.Now().Add(taskC.executeEvery)
+	periodicTasks.addTaskInternal(&nextTimeToExecute, &taskC, needToWakeHandleTaskRoutine)
 
 	log.WithFields(log.Fields{
 		"task": task,
 	}).Info("Task execution time updated.")
+
+	return true
+}
+
+func (periodicTasks *PeriodicTasks) removeTask(dummyTask *Task) bool {
+	periodicTasks.mapLock.Lock()
+	// Find the task
+	timeToExecute, task := periodicTasks.treeMap.Find(createTaskComparator(dummyTask))
+
+	if timeToExecute == nil || task == nil {
+		return false
+	}
+
+	taskC := task.(Task)
+
+	// If this is the next routine in line to be executed the handleTasks routine needs to be informed
+	needToWakeHandleTaskRoutine := false
+	if taskC.taskComparator(periodicTasks.treeMap.Min()) {
+		needToWakeHandleTaskRoutine = true
+	}
+
+	// Remove the task
+	periodicTasks.treeMap.Remove(timeToExecute)
+	periodicTasks.mapLock.Unlock()
+
+	// Wake up handleTask routine
+	if needToWakeHandleTaskRoutine {
+		periodicTasks.ch <- false
+	}
+
+	log.WithFields(log.Fields{
+		"task": task,
+	}).Info("Task removed.")
 
 	return true
 }
