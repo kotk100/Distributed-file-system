@@ -1,5 +1,7 @@
 package kademlia
 
+// TODO randomize execution times
+
 type RepublishTask struct {
 	task *Task
 }

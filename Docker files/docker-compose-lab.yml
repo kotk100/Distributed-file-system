@@ -8,9 +8,9 @@ services:
       BOOTSTRAP_ADDR: "bootstrapingNode:44135"
       LISTEN_PORT: ":44135"
       FILE_TRANSFER_PORT: ":44589"
-      REPUBLISH_TIME:  30 #3600
+      REPUBLISH_TIME:  60 #3600
       ORG_REPUBLISH_TIME: 50  #86400
-      EXPARATION_TIME: 86410
+      EXPARATION_TIME: 40 #86410
     depends_on:
       - "bootstrapingNode"
       - "kademlia_network"
@@ -33,8 +33,8 @@ services:
       LISTEN_PORT: ":44135"
       FILE_TRANSFER_PORT: ":44589"
       REPUBLISH_TIME:  60 #3600
-      ORG_REPUBLISH_TIME: 40  #86400
-      EXPARATION_TIME: 86410
+      ORG_REPUBLISH_TIME: 50  #86400
+      EXPARATION_TIME: 40 #86410
     depends_on:
       - "kademlia_network"
     deploy:

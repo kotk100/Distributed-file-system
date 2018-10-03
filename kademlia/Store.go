@@ -236,6 +236,11 @@ func answerStoreRequest(rpc *protocol.RPC) {
 	id := messageID{}
 	copy(id[:], rpc.MessageID[0:20])
 
+	log.WithFields(log.Fields{
+		"Filename": store.Filename,
+		"Contact":  other,
+	}).Info("Received STORE request.")
+
 	// Check if file already exsists
 	if checkFileExists(store.Filename) {
 		errorStoreAnswerWraper(network.SendStoreAnswerMessage(protocol.StoreAnswer_ALREADY_STORED, other, id, &rpc.OriginalSender))
