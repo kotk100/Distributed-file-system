@@ -31,7 +31,10 @@ func (fileExpirationTask *FileExpirationTask) execute() {
 	// TODO do not remove if pin is set
 
 	// Remove the republishing task as the file is deleted
-	PeriodicTasksReference.removeTask(fileExpirationTask.task)
+	task := &Task{}
+	task.id = fileExpirationTask.task.id
+	task.taskType = RepublishFile
+	PeriodicTasksReference.removeTask(task)
 }
 
 func (fileExpirationTask *FileExpirationTask) setTask(task *Task) {
