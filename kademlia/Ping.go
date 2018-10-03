@@ -2,7 +2,6 @@ package kademlia
 
 import (
 	"./protocol"
-	"github.com/golang/protobuf/proto"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -16,26 +15,6 @@ func SendAndRecievePing(contact *Contact, pingCallback PingCallback) {
 	createRoutine(&pingRequestExecutor)
 }
 
-// Parse message inside RPC
-func parsePingRPC(rpc *protocol.RPC) *protocol.Ping {
-	// Check type is correct
-	if rpc.MessageType != protocol.RPC_PING {
-		log.WithFields(log.Fields{
-			"Message": rpc,
-		}).Error("Wrong message type recieved. PING expected.")
-	}
-
-	// Parse message as Ping
-	ping := &protocol.Ping{}
-	if err := proto.Unmarshal(rpc.Message, ping); err != nil {
-		log.WithFields(log.Fields{
-			"Error": err,
-			"Msg":   rpc.Message,
-		}).Error("Failed to parse incomming Ping message.")
-	}
-
-	return ping
-}
 
 func answerPingRequest(msg *protocol.RPC) {
 	// Parse ping message and create contact

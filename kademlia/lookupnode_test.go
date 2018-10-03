@@ -1,7 +1,6 @@
 package kademlia
 
 import (
-	"fmt"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -181,7 +180,6 @@ func TestUpdateMiddleContactShortList(t *testing.T){
 	newContact:=NewContact(NewKademliaID("1111111101000110000000000000000000000000"), "localhost:8000")
 	newContact.distance = newContact.ID.CalcDistance(target.ID)
 	lookup.updateShortlistIfCloser(&newContact)
-	fmt.Println(lookup.shortlist)
 	assert.Equal(t,20, len(lookup.shortlist), "Size should be 20")
 	assert.Equal(t,newContact.ID, lookup.shortlist[18].contact.ID, "Should have same ID")
 }
