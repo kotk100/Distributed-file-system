@@ -89,6 +89,47 @@ func CreateNewStore(file *[]byte, password []byte, originalFilename string) *Sto
 		return nil
 	}
 
+	// Create periodic task for republishing
+	republishTask := &Task{}
+	republishTask.taskType = RefreshBucket
+	republishTask.id = hashToString(store.filehash[:])
+
+	timeString := os.Getenv("ORG_REPUBLISH_TIME")
+	timeSeconds, errb := strconv.Atoi(timeString)
+	if errb != nil {
+		log.WithFields(log.Fields{
+			"Error": errb,
+		}).Error("Failer to convert string to int")
+	}
+	republishTask.executeEvery = time.Duration(timeSeconds) * time.Second
+
+	repTask := &RepublishTask{}
+	republishTask.executor = repTask
+	timeToExecute := time.Now().Add(republishTask.executeEvery)
+
+	PeriodicTasksReference.addTask(&timeToExecute, republishTask)
+
+	// Create periodic task for file expiration
+	// TODO expiry time should be calculated dynamicaly, recalculate when a new node is added into the routing table
+	expiryTask := &Task{}
+	expiryTask.taskType = ExpireFile
+	expiryTask.id = republishTask.id
+
+	timeString = os.Getenv("EXPARATION_TIME")
+	timeSeconds, errb = strconv.Atoi(timeString)
+	if errb != nil {
+		log.WithFields(log.Fields{
+			"Error": errb,
+		}).Error("Failer to convert string to int")
+	}
+	expiryTask.executeEvery = time.Duration(timeSeconds) * time.Second
+
+	expTask := &FileExpirationTask{}
+	expiryTask.executor = expTask
+	timeToExecute = time.Now().Add(expiryTask.executeEvery)
+
+	PeriodicTasksReference.addTask(&timeToExecute, expiryTask)
+
 	return store
 }
 
@@ -115,47 +156,6 @@ func (store *Store) StartStore() {
 
 	target := Contact{}
 	target.ID = KademliaIDFromSlice(store.filehash[:])
-
-	// Create periodic task for republishing
-	republishTask := &Task{}
-	republishTask.taskType = RefreshBucket
-	republishTask.id = hashToString(store.filehash[:])
-
-	timeString := os.Getenv("ORG_REPUBLISH_TIME")
-	timeSeconds, err := strconv.Atoi(timeString)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"Error": err,
-		}).Error("Failer to convert string to int")
-	}
-	republishTask.executeEvery = time.Duration(timeSeconds) * time.Second
-
-	repTask := &RepublishTask{}
-	republishTask.executor = repTask
-	timeToExecute := time.Now().Add(republishTask.executeEvery)
-
-	PeriodicTasksReference.addTask(&timeToExecute, republishTask)
-
-	// Create periodic task for file expiration
-	// TODO expiry time should be calculated dynamicaly, recalculate when a new node is added into the routing table
-	expiryTask := &Task{}
-	expiryTask.taskType = ExpireFile
-	expiryTask.id = republishTask.id
-
-	timeString = os.Getenv("EXPARATION_TIME")
-	timeSeconds, err = strconv.Atoi(timeString)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"Error": err,
-		}).Error("Failer to convert string to int")
-	}
-	expiryTask.executeEvery = time.Duration(timeSeconds) * time.Second
-
-	expTask := &FileExpirationTask{}
-	expiryTask.executor = expTask
-	timeToExecute = time.Now().Add(expiryTask.executeEvery)
-
-	PeriodicTasksReference.addTask(&timeToExecute, expiryTask)
 
 	// Find k closest nodes to store file on
 	// Returns k closest to callback processKClosest in this file
@@ -246,8 +246,10 @@ func answerStoreRequest(rpc *protocol.RPC) {
 		task.taskType = RepublishFile
 		PeriodicTasksReference.updateTask(task)
 
-		task.taskType = ExpireFile
-		PeriodicTasksReference.updateTask(task)
+		task2 := &Task{}
+		task2.id = getHashFromFilename(store.Filename)
+		task2.taskType = ExpireFile
+		PeriodicTasksReference.updateTask(task2)
 
 	} else {
 		// Start listening on port and save file after connecting

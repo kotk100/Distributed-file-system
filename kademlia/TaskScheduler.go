@@ -82,12 +82,13 @@ func (periodicTasks *PeriodicTasks) handleTasks() {
 				log.Info("HandleTask routine woken up by another.")
 
 				// Check if it is still the earliest task otherwise restart loop, the result should never be nil
-				key2, taskRet2 := periodicTasks.getNextTask()
-				timeToExecute2, _ := castToTimeAndTask(key2, taskRet2)
+				// TODO Not needed and causes errors if the task is the same it just needs to be executed later
+				//key2, taskRet2 := periodicTasks.getNextTask()
+				//timeToExecute2, _ := castToTimeAndTask(key2, taskRet2)
 
-				if timeToExecute2.Before(timeToExecute) {
-					continue
-				}
+				//if timeToExecute2.Before(timeToExecute) {
+				continue
+				//}
 			}
 
 			task.executor.setTask(&task)
@@ -98,8 +99,10 @@ func (periodicTasks *PeriodicTasks) handleTasks() {
 
 			// Remove task or reschedule
 			if task.executeEvery.Nanoseconds() != 0 && task.taskType != ExpireFile {
+				log.Info("Task being updated.")
 				periodicTasks.updateTask(&task)
 			} else {
+				log.Info("Task removed.")
 				periodicTasks.mapLock.Lock()
 				periodicTasks.treeMap.Remove(timeToExecute)
 				periodicTasks.mapLock.Unlock()
@@ -176,14 +179,15 @@ func (task *Task) taskComparator(key interface{}, value interface{}) bool {
 }
 
 func (periodicTasks *PeriodicTasks) updateTask(dummyTask *Task) bool {
+	log.Info("1")
 	periodicTasks.mapLock.Lock()
 	// Find the task
 	timeToExecute, task := periodicTasks.treeMap.Find(createTaskComparator(dummyTask))
-
+	log.Info("2")
 	if timeToExecute == nil || task == nil {
 		return false
 	}
-
+	log.Info("3")
 	taskC := task.(Task)
 
 	// If this is the next routine in line to be executed the handleTasks routine needs to be informed
@@ -194,13 +198,13 @@ func (periodicTasks *PeriodicTasks) updateTask(dummyTask *Task) bool {
 
 	// Remove the task
 	periodicTasks.treeMap.Remove(timeToExecute)
-
+	log.Info("4")
 	periodicTasks.mapLock.Unlock()
-
+	log.Info("5")
 	// Add the task
 	nextTimeToExecute := time.Now().Add(taskC.executeEvery)
 	periodicTasks.addTaskInternal(&nextTimeToExecute, &taskC, needToWakeHandleTaskRoutine)
-
+	log.Info("6")
 	log.WithFields(log.Fields{
 		"task": task,
 	}).Info("Task execution time updated.")
