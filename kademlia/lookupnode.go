@@ -30,11 +30,13 @@ type LookupNode struct {
 	lookupNodeParallelism *LookupNodeParallelism
 	lookupNodeCallback    *LookupNodeCallback
 	lookNodeSender        *LookNodeSender
+	failedContacts        []Contact
 }
 
 func NewLookupNode(target Contact, lookupNodeCallback LookupNodeCallback) *LookupNode {
 	lookup := &LookupNode{}
 	lookup.shortlist = make([]LookupNodeContact, 0)
+	lookup.failedContacts = make([]Contact, 0)
 	lookup.target = target
 	lookup.lookupNodeParallelism = NewLookupNodeParallelism(lookup)
 	lookup.lookupNodeCallback = &lookupNodeCallback
@@ -55,17 +57,20 @@ func (lookupNode *LookupNode) setLookUpNodeSender(lookNodeSender LookNodeSender)
 //give channel or callback to get K closest result
 //select alpha contacts close of the target id
 func (lookupNode *LookupNode) Start() {
-	contactsCloseOfTarget := MyRoutingTable.FindClosestContacts(lookupNode.target.ID, alpha)
-
-	for _, element := range contactsCloseOfTarget {
-		lookupNodeContact := NewLookupNodeContact(element)
-		lookupNode.shortlist = append(lookupNode.shortlist, lookupNodeContact)
-		lookupNode.sendFindNodeRequest()
+	contactsCloseOfTarget := MyRoutingTable.FindClosestContactsNotInTheSlice(lookupNode.target.ID, alpha, lookupNode.failedContacts)
+	if len(contactsCloseOfTarget) != 0 {
+		for _, element := range contactsCloseOfTarget {
+			lookupNodeContact := NewLookupNodeContact(element)
+			lookupNode.shortlist = append(lookupNode.shortlist, lookupNodeContact)
+			lookupNode.sendFindNodeRequest()
+		}
+		log.WithFields(log.Fields{
+			"Contacts alpha": contactsCloseOfTarget,
+		}).Info("Start find node.")
+		lookupNode.lookupNodeParallelism.start()
+	} else {
+		(*lookupNode.lookupNodeCallback).processKClosest(lookupNode.shortlist) //shortlist will be empty
 	}
-	log.WithFields(log.Fields{
-		"Contacts alpha": contactsCloseOfTarget,
-	}).Info("Start find node.")
-	lookupNode.lookupNodeParallelism.start()
 }
 
 //callback for request executor
@@ -98,6 +103,11 @@ func (lookupNode *LookupNode) stop() {
 func (lookupNode *LookupNode) errorRequest(contactAsked Contact) {
 	lookupNode.changeLookupContactState(contactAsked, FAILED)
 	lookupNode.cleanShortList()
+	lookupNode.failedContacts = append(lookupNode.failedContacts, Contact{})
+	if len(lookupNode.shortlist) == 0 {
+		lookupNode.lookupNodeParallelism.stop()
+		lookupNode.Start()
+	}
 }
 
 func random(min, max int) int {
@@ -148,7 +158,7 @@ func (lookupNode *LookupNode) parallelismSendFindNodeRequest() {
 func (lookupNode *LookupNode) handleNewContact(contact Contact) {
 	contact.distance = contact.ID.CalcDistance(lookupNode.target.ID)
 	lookupNode.mux.Lock()
-	if !lookupNode.isItMe(&contact) && !lookupNode.contactIsInShortlist(&contact) {
+	if !lookupNode.isItMe(&contact) && !lookupNode.contactIsInShortlist(&contact) && !lookupNode.isFailedContact(&contact) {
 		lookupNode.updateShortlistIfCloser(&contact)
 	}
 	lookupNode.mux.Unlock()
@@ -156,6 +166,15 @@ func (lookupNode *LookupNode) handleNewContact(contact Contact) {
 
 func (lookupNode *LookupNode) isItMe(contact *Contact) bool {
 	return MyRoutingTable.me.ID.Equals(contact.ID)
+}
+
+func (lookupNode *LookupNode) isFailedContact(contact *Contact) bool {
+	for _, v := range lookupNode.failedContacts {
+		if contact.ID.Equals(v.ID) {
+			return true
+		}
+	}
+	return false
 }
 
 func (lookupNode *LookupNode) contactIsInShortlist(contact *Contact) bool {
