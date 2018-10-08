@@ -103,5 +103,5 @@ func (lookupValue *LookupValue) sendLookNode(target *KademliaID, contact *Contac
 		"lookupValue.fileHash":         lookupValue.fileHash,
 		"lookupValue.fileHash string ": hashToString(lookupValue.fileHash),
 	}).Info("Send find value")
-	SendAndReceiveFindValue(lookupValue, lookupValue.fileHash, contact)
+	SendAndReceiveFindValue(lookupValue, lookupValue.fileHash, *contact)
 }

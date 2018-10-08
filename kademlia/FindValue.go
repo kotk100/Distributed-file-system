@@ -7,7 +7,7 @@ import (
 	"os"
 )
 
-func SendAndReceiveFindValue(callback FindValueRequestCallback, fileHash []byte, contact *Contact) {
+func SendAndReceiveFindValue(callback FindValueRequestCallback, fileHash []byte, contact Contact) {
 	log.WithFields(log.Fields{
 		"Contact": contact,
 	}).Info("Sending FindValue message to node.")

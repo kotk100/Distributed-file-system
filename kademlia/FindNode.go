@@ -6,7 +6,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func SendAndReceiveFindNode(callback FindNodeRequestCallback, target *KademliaID, contact *Contact) {
+func SendAndReceiveFindNode(callback FindNodeRequestCallback, target *KademliaID, contact Contact) {
 	log.WithFields(log.Fields{
 		"Contact": contact,
 	}).Info("Sending FindNode message to node.")

@@ -43,7 +43,7 @@ func main() {
 		// Bootstap this node onto the network
 		bootstrap := kademlia.Bootstrap{}
 		bootstrap.BootstrapNode = *contact
-		kademlia.SendAndRecievePing(contact, &bootstrap)
+		kademlia.SendAndRecievePing(*contact, &bootstrap)
 	}
 
 	dRT := kademlia.DisplayRoutingTableClock{}

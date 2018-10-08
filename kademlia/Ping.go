@@ -5,7 +5,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func SendAndRecievePing(contact *Contact, pingCallback PingCallback) {
+func SendAndRecievePing(contact Contact, pingCallback PingCallback) {
 	log.WithFields(log.Fields{
 		"Contact": contact,
 	}).Info("Sending PING message to node.")

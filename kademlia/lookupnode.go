@@ -103,7 +103,7 @@ func (lookupNode *LookupNode) stop() {
 func (lookupNode *LookupNode) errorRequest(contactAsked Contact) {
 	lookupNode.changeLookupContactState(contactAsked, FAILED)
 	lookupNode.cleanShortList()
-	lookupNode.failedContacts = append(lookupNode.failedContacts, Contact{})
+	lookupNode.failedContacts = append(lookupNode.failedContacts, contactAsked)
 	if len(lookupNode.shortlist) == 0 {
 		lookupNode.lookupNodeParallelism.stop()
 		lookupNode.Start()
@@ -116,7 +116,7 @@ func random(min, max int) int {
 }
 
 func (lookupNode *LookupNode) sendLookNode(target *KademliaID, contact *Contact) {
-	SendAndReceiveFindNode(lookupNode, lookupNode.target.ID, contact)
+	SendAndReceiveFindNode(lookupNode, lookupNode.target.ID, *contact)
 }
 
 func (lookupNode *LookupNode) cleanShortList() {

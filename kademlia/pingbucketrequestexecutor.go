@@ -10,12 +10,12 @@ type PingBucketRequestExecutor struct {
 	bucket  *bucket
 	ch      chan *protocol.RPC
 	id      messageID
-	contact *Contact
+	contact Contact
 }
 
 func (pingBucketRequestExecutor *PingBucketRequestExecutor) execute() {
 	// Send ping message to other node
-	error := pingBucketRequestExecutor.bucket.networkAPI.SendPingMessage(MyRoutingTable.me.ID, pingBucketRequestExecutor.contact, pingBucketRequestExecutor.id)
+	error := pingBucketRequestExecutor.bucket.networkAPI.SendPingMessage(MyRoutingTable.me.ID, &pingBucketRequestExecutor.contact, pingBucketRequestExecutor.id)
 
 	var element *list.Element
 	for e := pingBucketRequestExecutor.bucket.list.Front(); e != nil; e = e.Next() {

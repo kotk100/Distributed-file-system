@@ -12,14 +12,14 @@ type PingCallback interface {
 type PingRequestExecutor struct {
 	ch           chan *protocol.RPC
 	id           messageID
-	contact      *Contact
+	contact      Contact
 	pingCallback PingCallback
 }
 
 func (requestExecutorPing *PingRequestExecutor) execute() {
 	// Send ping message to other node
 	var network Network
-	error := network.SendPingMessage(MyRoutingTable.me.ID, requestExecutorPing.contact, requestExecutorPing.id)
+	error := network.SendPingMessage(MyRoutingTable.me.ID, &requestExecutorPing.contact, requestExecutorPing.id)
 
 	//if the channel return nil then there was error
 	if error {
