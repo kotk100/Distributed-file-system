@@ -57,7 +57,7 @@ func (bucket *bucket) AddContact(contact Contact) {
 			contact := bucket.list.Back().Value.(Contact)
 			bucket.muxAccessBucket.Unlock()
 			pingBucketRequestExecutor := PingBucketRequestExecutor{}
-			pingBucketRequestExecutor.contact = &contact
+			pingBucketRequestExecutor.contact = contact
 			pingBucketRequestExecutor.bucket = bucket
 			createRoutine(&pingBucketRequestExecutor)
 		}

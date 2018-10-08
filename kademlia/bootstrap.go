@@ -24,6 +24,6 @@ func (bootstrap *Bootstrap) pingResult(receivedAnswer bool) {
 	} else {
 		log.Info("No response received, boostraping process failed")
 		time.Sleep(30 * time.Second)
-		SendAndRecievePing(&bootstrap.BootstrapNode, bootstrap)
+		SendAndRecievePing(bootstrap.BootstrapNode, bootstrap)
 	}
 }

@@ -45,6 +45,23 @@ func (candidates *ContactCandidates) Append(contacts []Contact) {
 	candidates.contacts = append(candidates.contacts, contacts...)
 }
 
+func (candidates *ContactCandidates) AppendFilter(contacts []Contact, contactsToNotInsert []Contact) {
+	for _, v := range contacts {
+		if !candidates.contactIsInSlice(v, contactsToNotInsert) {
+			candidates.contacts = append(candidates.contacts, v)
+		}
+	}
+}
+
+func (candidates *ContactCandidates) contactIsInSlice(contact Contact, contactsToNotInsert []Contact) bool {
+	for _, v := range contactsToNotInsert {
+		if v.ID.Equals(contact.ID) {
+			return true
+		}
+	}
+	return false
+}
+
 // GetContacts returns the first count number of Contacts
 func (candidates *ContactCandidates) GetContacts(count int) []Contact {
 	return candidates.contacts[:count]

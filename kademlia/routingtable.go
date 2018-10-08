@@ -65,6 +65,34 @@ func (routingTable *RoutingTable) FindClosestContacts(target *KademliaID, count 
 	return candidates.GetContacts(count)
 }
 
+// FindClosestContacts finds the count closest Contacts to the target in the RoutingTable which are not in the slice
+func (routingTable *RoutingTable) FindClosestContactsNotInTheSlice(target *KademliaID, count int, contacts []Contact) []Contact {
+	var candidates ContactCandidates
+	bucketIndex := routingTable.getBucketIndex(target)
+	bucket := routingTable.buckets[bucketIndex]
+
+	candidates.AppendFilter(bucket.GetContactAndCalcDistance(target), contacts)
+
+	for i := 1; (bucketIndex-i >= 0 || bucketIndex+i < IDLength*8) && candidates.Len() < count; i++ {
+		if bucketIndex-i >= 0 {
+			bucket = routingTable.buckets[bucketIndex-i]
+			candidates.AppendFilter(bucket.GetContactAndCalcDistance(target), contacts)
+		}
+		if bucketIndex+i < IDLength*8 {
+			bucket = routingTable.buckets[bucketIndex+i]
+			candidates.AppendFilter(bucket.GetContactAndCalcDistance(target), contacts)
+		}
+	}
+
+	candidates.Sort()
+
+	if count > candidates.Len() {
+		count = candidates.Len()
+	}
+
+	return candidates.GetContacts(count)
+}
+
 // getBucketIndex get the correct Bucket index for the KademliaID
 func (routingTable *RoutingTable) getBucketIndex(id *KademliaID) int {
 	distance := id.CalcDistance(routingTable.me.ID)
@@ -79,11 +107,11 @@ func (routingTable *RoutingTable) getBucketIndex(id *KademliaID) int {
 	return IDLength*8 - 1
 }
 
-func (routingTable *RoutingTable) GetMe() Contact{
+func (routingTable *RoutingTable) GetMe() Contact {
 	return routingTable.me
 }
 
-func (routingTable *RoutingTable) Print(){
+func (routingTable *RoutingTable) Print() {
 	log.Info("routing table contents")
 	for i := 0; i < IDLength*8; i++ {
 		routingTable.buckets[i].print()

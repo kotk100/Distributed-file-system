@@ -8,7 +8,7 @@ import (
 type FindValueRequestExecutor struct {
 	ch       chan *protocol.RPC
 	id       messageID
-	contact  *Contact
+	contact  Contact
 	fileHash []byte
 	callback *FindValueRequestCallback
 }
@@ -17,7 +17,7 @@ func (findValueRequestExecutor *FindValueRequestExecutor) execute() {
 	// Send ping message to other node
 	var network Network
 	error := network.SendFindDataMessage(findValueRequestExecutor.fileHash,
-		findValueRequestExecutor.contact,
+		&findValueRequestExecutor.contact,
 		make([]Contact, 0),
 		findValueRequestExecutor.id,
 		MyRoutingTable.me.ID,
@@ -29,7 +29,7 @@ func (findValueRequestExecutor *FindValueRequestExecutor) execute() {
 		log.Info("Error to send FindValue message.")
 		destroyRoutine(findValueRequestExecutor.id)
 		if findValueRequestExecutor.callback != nil {
-			(*findValueRequestExecutor.callback).errorRequest(*findValueRequestExecutor.contact)
+			(*findValueRequestExecutor.callback).errorRequest(findValueRequestExecutor.contact)
 		}
 	} else {
 		timeout := NewTimeout(findValueRequestExecutor.id, findValueRequestExecutor.ch)
@@ -43,7 +43,7 @@ func (findValueRequestExecutor *FindValueRequestExecutor) execute() {
 		if findValueRequestExecutor.callback != nil {
 			if rpc == nil {
 				log.Error("find value request time out.")
-				(*findValueRequestExecutor.callback).errorRequest(*findValueRequestExecutor.contact)
+				(*findValueRequestExecutor.callback).errorRequest(findValueRequestExecutor.contact)
 			} else {
 				// Parse ping message and create contact
 				findValue := parseFindValueRequest(rpc)

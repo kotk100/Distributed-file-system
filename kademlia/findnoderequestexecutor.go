@@ -8,7 +8,7 @@ import (
 type FindNodeRequestExecutor struct {
 	ch       chan *protocol.RPC
 	id       messageID
-	contact  *Contact
+	contact  Contact
 	target   *KademliaID
 	callback *FindNodeRequestCallback
 }
@@ -18,7 +18,7 @@ func (findNodeRequestExecutor *FindNodeRequestExecutor) execute() {
 	var network Network
 	error := network.SendFindContactMessage(findNodeRequestExecutor.target,
 		MyRoutingTable.me.ID,
-		findNodeRequestExecutor.contact,
+		&findNodeRequestExecutor.contact,
 		make([]Contact, 0),
 		findNodeRequestExecutor.id)
 	//if the channel return nil then there was error
@@ -26,7 +26,7 @@ func (findNodeRequestExecutor *FindNodeRequestExecutor) execute() {
 		log.Info("Error to send FindNode message.")
 		destroyRoutine(findNodeRequestExecutor.id)
 		if findNodeRequestExecutor.callback != nil {
-			(*findNodeRequestExecutor.callback).errorRequest(*findNodeRequestExecutor.contact)
+			(*findNodeRequestExecutor.callback).errorRequest(findNodeRequestExecutor.contact)
 		}
 	} else {
 		timeout := NewTimeout(findNodeRequestExecutor.id, findNodeRequestExecutor.ch)
@@ -34,18 +34,20 @@ func (findNodeRequestExecutor *FindNodeRequestExecutor) execute() {
 		// Recieve response message through channel
 		rpc := <-findNodeRequestExecutor.ch
 		timeout.stop()
-
-		log.Info("Received FindNode message response.")
-
 		if findNodeRequestExecutor.callback != nil {
 			if rpc == nil {
-				log.Error("find node request time out.")
-				(*findNodeRequestExecutor.callback).errorRequest(*findNodeRequestExecutor.contact)
+				log.WithFields(log.Fields{
+					"contact":findNodeRequestExecutor.contact,
+				}).Error("find node request time out.")
+				(*findNodeRequestExecutor.callback).errorRequest(findNodeRequestExecutor.contact)
 			} else {
 				// Parse ping message and create contact
 				findNode := parseFindNodeRequest(rpc)
 				contactSender := createContactFromRPC(rpc)
 				contacts := FindNode_ContactToContact(findNode.Contacts)
+				log.WithFields(log.Fields{
+					"contact sender": *contactSender,
+				}).Info("FIND node message received.")
 				(*findNodeRequestExecutor.callback).successRequest(*contactSender, contacts)
 
 				MyRoutingTable.AddContactAsync(*contactSender)
