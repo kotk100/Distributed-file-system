@@ -91,7 +91,7 @@ func CreateNewStore(file *[]byte, password []byte, originalFilename string) *Sto
 
 	// Create periodic task for republishing
 	republishTask := &Task{}
-	republishTask.taskType = RefreshBucket
+	republishTask.taskType = RepublishFile
 	republishTask.id = hashToString(store.filehash[:])
 
 	timeString := os.Getenv("ORG_REPUBLISH_TIME")
@@ -273,7 +273,7 @@ func answerStoreRequest(rpc *protocol.RPC) {
 
 			// Create periodic task for republishing
 			republishTask := &Task{}
-			republishTask.taskType = RefreshBucket
+			republishTask.taskType = RepublishFile
 			republishTask.id = getHashFromFilename(store.Filename)
 
 			timeString := os.Getenv("REPUBLISH_TIME")

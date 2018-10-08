@@ -8,14 +8,14 @@ services:
       BOOTSTRAP_ADDR: "bootstrapingNode:44135"
       LISTEN_PORT: ":44135"
       FILE_TRANSFER_PORT: ":44589"
-      REPUBLISH_TIME:  60 #3600
+      REPUBLISH_TIME:  40 #3600
       ORG_REPUBLISH_TIME: 50  #86400
-      EXPARATION_TIME: 40 #86410
+      EXPARATION_TIME: 55 #86410
     depends_on:
       - "bootstrapingNode"
       - "kademlia_network"
     deploy:
-      replicas: 30
+      replicas: 100
       resources:
         limits:
           cpus: "0.1"

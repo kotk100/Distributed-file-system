@@ -191,6 +191,9 @@ func (periodicTasks *PeriodicTasks) updateTask(dummyTask *Task) bool {
 	// If this is the next routine in line to be executed the handleTasks routine needs to be informed
 	needToWakeHandleTaskRoutine := false
 	if taskC.taskComparator(periodicTasks.treeMap.Min()) {
+		log.WithFields(log.Fields{ // TODO not woken up when republishing time is updated
+			"task": task,
+		}).Info("HandleTasks needs to be woken up.")
 		needToWakeHandleTaskRoutine = true
 	}
 
