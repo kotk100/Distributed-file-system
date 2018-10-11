@@ -4,6 +4,9 @@ import (
 	"github.com/emirpasic/gods/maps/treemap"
 	"github.com/emirpasic/gods/utils"
 	log "github.com/sirupsen/logrus"
+	rand2 "math/rand"
+	"os"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -13,15 +16,26 @@ import (
 var PeriodicTasksReference *PeriodicTasks
 
 type PeriodicTasks struct {
-	treeMap *treemap.Map
-	mapLock sync.Mutex
-	ch      chan bool
+	treeMap  *treemap.Map
+	mapLock  sync.Mutex
+	ch       chan bool
+	variance int64
 }
 
 func CreatePeriodicTasks() *PeriodicTasks {
 	periodicTasks := &PeriodicTasks{}
 	periodicTasks.treeMap = treemap.NewWith(utils.TimeComparator)
 	periodicTasks.ch = make(chan bool, 1)
+
+	// Get randomization time interval
+	timeString := os.Getenv("TIME_VARIATION")
+	timeSeconds, errb := strconv.Atoi(timeString)
+	if errb != nil {
+		log.WithFields(log.Fields{
+			"Error": errb,
+		}).Error("Failer to convert string to int")
+	}
+	periodicTasks.variance = int64(timeSeconds) * int64(time.Second)
 
 	// Create go routine that will service tasks
 	go periodicTasks.handleTasks()
@@ -66,7 +80,7 @@ func (periodicTasks *PeriodicTasks) handleTasks() {
 			timeToExecute, task := castToTimeAndTask(key, taskRet)
 
 			// Wait for task or interrupt on channel
-			timeToWait := timeToExecute.Sub(time.Now()) //TODO What about negative values, test
+			timeToWait := timeToExecute.Sub(time.Now())
 			log.WithFields(log.Fields{
 				"timeToWait": timeToWait,
 			}).Info("Waiting for next task.")
@@ -126,12 +140,16 @@ func (periodicTasks *PeriodicTasks) addTask(timeToExecute *time.Time, task *Task
 }
 
 func (periodicTasks *PeriodicTasks) addTaskInternal(timeToExecute *time.Time, task *Task, forceWakeUp bool) {
+	// Randomize timeToExecute
+	rand := rand2.Int63n(periodicTasks.variance*2) - periodicTasks.variance
+	timeToExecuteRand := timeToExecute.Add(time.Duration(rand))
+
 	periodicTasks.mapLock.Lock()
 
 	// All keys need to be different in map so check if the key already exists
-	for _, found := periodicTasks.treeMap.Get(*timeToExecute); found; _, found = periodicTasks.treeMap.Get(*timeToExecute) {
+	for _, found := periodicTasks.treeMap.Get(timeToExecuteRand); found; _, found = periodicTasks.treeMap.Get(timeToExecuteRand) {
 		// Change time a little and retry
-		timeToExecute.Add(time.Nanosecond)
+		timeToExecuteRand = timeToExecuteRand.Add(time.Nanosecond)
 	}
 
 	// Make sure if there are no tasks or if the added task is before the first to wake up the handleTasks routine
@@ -141,12 +159,12 @@ func (periodicTasks *PeriodicTasks) addTaskInternal(timeToExecute *time.Time, ta
 		needToWakeHandleTaskRoutine = true
 	} else {
 		timeToExecuteMin, _ := castToTimeAndTask(key, taskRet)
-		if timeToExecute.Before(timeToExecuteMin) {
+		if timeToExecuteRand.Before(timeToExecuteMin) {
 			needToWakeHandleTaskRoutine = true
 		}
 	}
 
-	periodicTasks.treeMap.Put(*timeToExecute, *task)
+	periodicTasks.treeMap.Put(timeToExecuteRand, *task)
 
 	periodicTasks.mapLock.Unlock()
 
@@ -179,6 +197,11 @@ func (task *Task) taskComparator(key interface{}, value interface{}) bool {
 }
 
 func (periodicTasks *PeriodicTasks) updateTask(dummyTask *Task) bool {
+
+	return periodicTasks.updateTaskWithTime(dummyTask, nil)
+}
+
+func (periodicTasks *PeriodicTasks) updateTaskWithTime(dummyTask *Task, timeToExecuteParam *time.Time) bool {
 	periodicTasks.mapLock.Lock()
 	// Find the task
 	timeToExecute, task := periodicTasks.treeMap.Find(createTaskComparator(dummyTask))
@@ -200,8 +223,15 @@ func (periodicTasks *PeriodicTasks) updateTask(dummyTask *Task) bool {
 	// Remove the task
 	periodicTasks.treeMap.Remove(timeToExecute)
 	periodicTasks.mapLock.Unlock()
+
+	var nextTimeToExecute time.Time
+	if timeToExecuteParam == nil {
+		nextTimeToExecute = time.Now().Add(taskC.executeEvery)
+	} else {
+		nextTimeToExecute = *timeToExecuteParam
+	}
+
 	// Add the task
-	nextTimeToExecute := time.Now().Add(taskC.executeEvery)
 	periodicTasks.addTaskInternal(&nextTimeToExecute, &taskC, needToWakeHandleTaskRoutine)
 	log.WithFields(log.Fields{
 		"task": task,

@@ -1,6 +1,11 @@
 package kademlia
 
-import log "github.com/sirupsen/logrus"
+import (
+	log "github.com/sirupsen/logrus"
+	"os"
+	"strconv"
+	"time"
+)
 
 const bucketSize = 20
 
@@ -18,6 +23,26 @@ func NewRoutingTable(me Contact) *RoutingTable {
 	routingTable := &RoutingTable{}
 	for i := 0; i < IDLength*8; i++ {
 		routingTable.buckets[i] = newBucket()
+
+		// Create periodic task for refreshing buckets
+		refreshBucketTask := &Task{}
+		refreshBucketTask.taskType = RefreshBucket
+		refreshBucketTask.id = strconv.Itoa(i)
+
+		timeString := os.Getenv("BUCKET_REFRESH_TIME")
+		timeSeconds, errb := strconv.Atoi(timeString)
+		if errb != nil {
+			log.WithFields(log.Fields{
+				"Error": errb,
+			}).Error("Failer to convert string to int")
+		}
+		refreshBucketTask.executeEvery = time.Duration(timeSeconds) * time.Second
+
+		refTask := &RefreshBucketTask{}
+		refreshBucketTask.executor = refTask
+		timeToExecute := time.Now().Add(refreshBucketTask.executeEvery)
+
+		PeriodicTasksReference.addTask(&timeToExecute, refreshBucketTask)
 	}
 	routingTable.me = me
 	return routingTable
@@ -27,6 +52,13 @@ func NewRoutingTable(me Contact) *RoutingTable {
 func (routingTable *RoutingTable) AddContactAsync(contact Contact) {
 	bucketIndex := routingTable.getBucketIndex(contact.ID)
 	bucket := routingTable.buckets[bucketIndex]
+
+	// Update periodic task for refreshing buckets
+	task := &Task{}
+	task.id = strconv.Itoa(bucketIndex)
+	task.taskType = RefreshBucket
+	go PeriodicTasksReference.updateTask(task)
+
 	go bucket.AddContact(contact)
 }
 
@@ -34,6 +66,13 @@ func (routingTable *RoutingTable) AddContactAsync(contact Contact) {
 func (routingTable *RoutingTable) AddContact(contact Contact) {
 	bucketIndex := routingTable.getBucketIndex(contact.ID)
 	bucket := routingTable.buckets[bucketIndex]
+
+	// Update periodic task for refreshing buckets
+	task := &Task{}
+	task.id = strconv.Itoa(bucketIndex)
+	task.taskType = RefreshBucket
+	go PeriodicTasksReference.updateTask(task)
+
 	bucket.AddContact(contact)
 }
 
@@ -105,6 +144,27 @@ func (routingTable *RoutingTable) getBucketIndex(id *KademliaID) int {
 	}
 
 	return IDLength*8 - 1
+}
+
+// TODO make sure the actual id is not changed and a new one is created
+func (routingTable *RoutingTable) getRandomIDForBucket(bucketID int) *KademliaID {
+	id := *routingTable.me.ID
+	j := bucketID % 8
+
+	// Change ID so that it falls into the right bucket
+	id[bucketID/8] ^= 0x1 << uint8(7-j)
+
+	// Randomize it a bit, ignores up to 7 bits when doing it depending on the bucketID
+	rand := NewRandomKademliaID()
+	for i := (bucketID / 8) + 1; i < IDLength; i++ {
+		id[i] ^= rand[i]
+	}
+
+	return &id
+}
+
+func (routingTable *RoutingTable) getBucketContactNumber(bucketID int) int {
+	return routingTable.buckets[bucketID].list.Len()
 }
 
 func (routingTable *RoutingTable) GetMe() Contact {

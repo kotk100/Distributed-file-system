@@ -11,6 +11,8 @@ services:
       REPUBLISH_TIME:  40 #3600
       ORG_REPUBLISH_TIME: 50  #86400
       EXPARATION_TIME: 55 #86410
+      BUCKET_REFRESH_TIME: 3600
+      TIME_VARIATION: 2 # Used for randomizing time for periodic tasks. The interval is +-2 in this case.
     depends_on:
       - "bootstrapingNode"
       - "kademlia_network"
@@ -35,6 +37,8 @@ services:
       REPUBLISH_TIME:  60 #3600
       ORG_REPUBLISH_TIME: 50  #86400
       EXPARATION_TIME: 40 #86410
+      BUCKET_REFRESH_TIME: 3600
+      TIME_VARIATION: 2 # Used for randomizing time for periodic tasks. The interval is +-2 in this case.
     depends_on:
       - "kademlia_network"
     deploy:
