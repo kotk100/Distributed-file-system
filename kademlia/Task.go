@@ -10,9 +10,10 @@ type TaskExecutor interface {
 type TaskType int
 
 const (
-	RepublishFile TaskType = 0
-	ExpireFile    TaskType = 1
-	RefreshBucket TaskType = 2
+	RepublishFile      TaskType = 0
+	ExpireFile         TaskType = 1
+	RefreshBucket      TaskType = 2
+	DeleteUnpinRequest TaskType = 3
 )
 
 type Task struct {

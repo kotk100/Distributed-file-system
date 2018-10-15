@@ -26,11 +26,15 @@ func NewKademliaID(data string) *KademliaID {
 
 // NewKademliaID returns a new instance of a KademliaID based on the string input
 func KademliaIDFromSlice(data []byte) *KademliaID {
-	id := &KademliaID{}
+	if data != nil {
+		id := &KademliaID{}
 
-	copy(id[:], data[0:20])
+		copy(id[:], data[0:20])
 
-	return id
+		return id
+	} else {
+		return nil
+	}
 }
 
 // NewRandomKademliaID returns a new instance of a random KademliaID,
@@ -56,6 +60,10 @@ func (kademliaID KademliaID) Less(otherKademliaID *KademliaID) bool {
 
 // Equals returns true if kademliaID == otherKademliaID (bitwise)
 func (kademliaID KademliaID) Equals(otherKademliaID *KademliaID) bool {
+	if otherKademliaID == nil {
+		return false
+	}
+
 	for i := 0; i < IDLength; i++ {
 		if kademliaID[i] != otherKademliaID[i] {
 			return false

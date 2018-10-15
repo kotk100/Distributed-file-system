@@ -1,7 +1,5 @@
 package kademlia
 
-// TODO randomize execution times
-
 type RepublishTask struct {
 	task *Task
 }
@@ -27,10 +25,19 @@ type FileExpirationTask struct {
 }
 
 func (fileExpirationTask *FileExpirationTask) execute() {
+	// Check if file is pinned
+	if isFilePinned(fileExpirationTask.task.id) {
+		// Remove the expiration task as the file is pinned and cannot be deleted
+		task := &Task{}
+		task.id = fileExpirationTask.task.id
+		task.taskType = ExpireFile
+		PeriodicTasksReference.removeTask(task)
+
+		return
+	}
+
 	// Delete file from filesystem
 	removeFileByHash(fileExpirationTask.task.id)
-
-	// TODO do not remove if pin is set
 
 	// Remove the republishing task as the file is deleted
 	task := &Task{}

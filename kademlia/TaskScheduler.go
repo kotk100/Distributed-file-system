@@ -11,8 +11,6 @@ import (
 	"time"
 )
 
-// TODO refresh bucket
-
 var PeriodicTasksReference *PeriodicTasks
 
 type PeriodicTasks struct {
@@ -94,15 +92,7 @@ func (periodicTasks *PeriodicTasks) handleTasks() {
 			isTimeout := <-periodicTasks.ch
 			if !isTimeout {
 				log.Info("HandleTask routine woken up by another.")
-
-				// Check if it is still the earliest task otherwise restart loop, the result should never be nil
-				// TODO Not needed and causes errors if the task is the same it just needs to be executed later
-				//key2, taskRet2 := periodicTasks.getNextTask()
-				//timeToExecute2, _ := castToTimeAndTask(key2, taskRet2)
-
-				//if timeToExecute2.Before(timeToExecute) {
 				continue
-				//}
 			}
 
 			task.executor.setTask(&task)
@@ -114,7 +104,7 @@ func (periodicTasks *PeriodicTasks) handleTasks() {
 			// Remove task or reschedule
 			if task.executeEvery.Nanoseconds() != 0 && task.taskType != ExpireFile {
 				log.Info("Task being updated.")
-				periodicTasks.updateTask(&task) //TODO wakes this thread unnecessarily again
+				periodicTasks.updateTaskWithoutWakeUp(&task)
 			} else {
 				log.Info("Task removed.")
 				periodicTasks.mapLock.Lock()
@@ -122,17 +112,7 @@ func (periodicTasks *PeriodicTasks) handleTasks() {
 				periodicTasks.mapLock.Unlock()
 			}
 		}
-
 	}
-}
-
-func createTask(taskType TaskType, id string, executor TaskExecutor) *Task {
-	task := &Task{}
-	task.taskType = taskType
-	task.id = id
-	task.executor = executor
-
-	return task
 }
 
 func (periodicTasks *PeriodicTasks) addTask(timeToExecute *time.Time, task *Task) {
@@ -179,7 +159,7 @@ func (periodicTasks *PeriodicTasks) addTaskInternal(timeToExecute *time.Time, ta
 
 	log.WithFields(log.Fields{
 		"task": task,
-	}).Info("Added new periodic task to be executed.")
+	}).Debug("Added new periodic task to be executed.")
 }
 
 func createTaskComparator(dummyTask *Task) func(interface{}, interface{}) bool {
@@ -197,7 +177,6 @@ func (task *Task) taskComparator(key interface{}, value interface{}) bool {
 }
 
 func (periodicTasks *PeriodicTasks) updateTask(dummyTask *Task) bool {
-
 	return periodicTasks.updateTaskWithTime(dummyTask, nil)
 }
 
@@ -214,9 +193,9 @@ func (periodicTasks *PeriodicTasks) updateTaskWithTime(dummyTask *Task, timeToEx
 	// If this is the next routine in line to be executed the handleTasks routine needs to be informed
 	needToWakeHandleTaskRoutine := false
 	if taskC.taskComparator(periodicTasks.treeMap.Min()) {
-		log.WithFields(log.Fields{ // TODO not woken up when republishing time is updated
+		log.WithFields(log.Fields{
 			"task": task,
-		}).Info("HandleTasks needs to be woken up.")
+		}).Debug("HandleTasks needs to be woken up.")
 		needToWakeHandleTaskRoutine = true
 	}
 
@@ -235,7 +214,32 @@ func (periodicTasks *PeriodicTasks) updateTaskWithTime(dummyTask *Task, timeToEx
 	periodicTasks.addTaskInternal(&nextTimeToExecute, &taskC, needToWakeHandleTaskRoutine)
 	log.WithFields(log.Fields{
 		"task": task,
-	}).Info("Task execution time updated.")
+	}).Debug("Task execution time updated.")
+
+	return true
+}
+
+func (periodicTasks *PeriodicTasks) updateTaskWithoutWakeUp(dummyTask *Task) bool {
+	periodicTasks.mapLock.Lock()
+	// Find the task
+	timeToExecute, task := periodicTasks.treeMap.Find(createTaskComparator(dummyTask))
+	if timeToExecute == nil || task == nil {
+		periodicTasks.mapLock.Unlock()
+		return false
+	}
+	taskC := task.(Task)
+
+	// Remove the task
+	periodicTasks.treeMap.Remove(timeToExecute)
+	periodicTasks.mapLock.Unlock()
+
+	nextTimeToExecute := time.Now().Add(taskC.executeEvery)
+
+	// Add the task
+	periodicTasks.addTaskInternal(&nextTimeToExecute, &taskC, false)
+	log.WithFields(log.Fields{
+		"task": task,
+	}).Debug("Task rescheduled for next operation.")
 
 	return true
 }
@@ -245,7 +249,11 @@ func (periodicTasks *PeriodicTasks) removeTask(dummyTask *Task) bool {
 	// Find the task
 	timeToExecute, task := periodicTasks.treeMap.Find(createTaskComparator(dummyTask))
 
-	if timeToExecute == nil || task == nil { //TODO handle this case
+	if timeToExecute == nil || task == nil {
+		log.WithFields(log.Fields{
+			"task": dummyTask,
+		}).Error("Task cannot be removed because it was not found.")
+
 		periodicTasks.mapLock.Unlock()
 		return false
 	}

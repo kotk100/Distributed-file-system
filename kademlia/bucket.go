@@ -88,6 +88,17 @@ func (bucket *bucket) Len() int {
 	return bucket.list.Len()
 }
 
+func (bucket *bucket) GetContacts() *[]Contact {
+	contacts := []Contact{}
+
+	for elt := bucket.list.Front(); elt != nil; elt = elt.Next() {
+		contact := elt.Value.(Contact)
+		contacts = append(contacts, contact)
+	}
+
+	return &contacts
+}
+
 func (bucket *bucket) print() {
 	bucket.muxAccessBucket.Lock()
 	log.WithFields(log.Fields{

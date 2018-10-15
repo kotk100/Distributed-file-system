@@ -46,6 +46,7 @@ func (lookupValue *LookupValue) start() {
 				"file string": stringPath,
 			}).Info("Error open file")
 		} else {
+			defer file.Close()
 			fileInfo, error := file.Stat()
 			if error != nil {
 				log.WithFields(log.Fields{
@@ -74,7 +75,7 @@ func (lookupValue *LookupValue) errorRequest(contact Contact) {
 
 func (lookupValue *LookupValue) successRequest(contact Contact, contacts []Contact, findValueRpc *protocol.FindValue) {
 	lookupValue.muxSuccessRequest.Lock()
-	if ! lookupValue.hasBeenFound {
+	if !lookupValue.hasBeenFound {
 		if findValueRpc.HaveTheFile {
 			log.WithFields(log.Fields{
 				"Contact": contact,

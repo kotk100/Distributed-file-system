@@ -79,9 +79,9 @@ func sendMessageToRoutine(msg *protocol.RPC) {
 		case protocol.RPC_FIND_VALUE:
 			go answerFindValueRequest(msg)
 		case protocol.RPC_PIN:
-			//TODO
+			// Not needed as only external sources need to pin files on node
 		case protocol.RPC_UNPIN:
-			//TODO
+			go unpinReference.answerUnpinRequest(msg)
 		case protocol.RPC_SEND_FILE:
 			go answerSendFileRequest(msg)
 		default:

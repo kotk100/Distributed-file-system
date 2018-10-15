@@ -48,6 +48,16 @@ func NewRoutingTable(me Contact) *RoutingTable {
 	return routingTable
 }
 
+func (routingTable *RoutingTable) getAllContacts() *[]Contact {
+	contacts := []Contact{}
+
+	for i := 0; i < IDLength*8; i++ {
+		contacts = append(contacts, *routingTable.buckets[i].GetContacts()...)
+	}
+
+	return &contacts
+}
+
 // AddContactAsync add a new contact to the correct Bucket
 func (routingTable *RoutingTable) AddContactAsync(contact Contact) {
 	bucketIndex := routingTable.getBucketIndex(contact.ID)
@@ -146,7 +156,6 @@ func (routingTable *RoutingTable) getBucketIndex(id *KademliaID) int {
 	return IDLength*8 - 1
 }
 
-// TODO make sure the actual id is not changed and a new one is created
 func (routingTable *RoutingTable) getRandomIDForBucket(bucketID int) *KademliaID {
 	id := *routingTable.me.ID
 	j := bucketID % 8

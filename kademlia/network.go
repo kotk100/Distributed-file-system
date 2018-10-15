@@ -295,6 +295,51 @@ func (network *Network) SendStoreAnswerMessage(answer protocol.StoreAnswerStoreA
 	return false
 }
 
+func (network *Network) SendUnpinMessage(filehash string, passwordHash string, contact *Contact, messageID []byte) bool {
+	// Open connection
+	conn, err := net.Dial("udp", contact.Address)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"Error":   err,
+			"Contact": contact,
+		}).Error("Failed to dial UDP address.")
+		return true
+	} else {
+		// Close connection
+		defer conn.Close()
+
+		unpin := &protocol.UnPin{}
+		unpin.FileHash = filehash
+		unpin.PasswordHash = passwordHash
+		out, err := proto.Marshal(unpin)
+
+		if err != nil {
+			log.WithFields(log.Fields{
+				"Error": err,
+			}).Error("Failed to encode UNPIN message:")
+			return true
+		} else {
+			// Wrap store message and get bytes to send
+			message := network.GetRPCMessage(out, protocol.RPC_UNPIN, messageID, nil)
+			// Write message to the connection (send to other node)
+			n, err := conn.Write(message)
+			if err != nil {
+				log.WithFields(log.Fields{
+					"Error":           err,
+					"Number of bytes": n,
+				}).Error("Failed to write message to connection.")
+				return true
+			} else {
+				log.WithFields(log.Fields{
+					"Contact": contact,
+				}).Info("Sent Unpin message.")
+			}
+		}
+	}
+
+	return false
+}
+
 // Buffer size for sending files over TCP
 var BUFFERSIZE int64 = 1300
 
@@ -350,6 +395,7 @@ func (network *Network) SendFile(filehash *[20]byte, contact *Contact, port stri
 	return false
 }
 
+// TODO ERRO[0473] Failed to start listening for a TCP connection.  Error="listen tcp :44589: bind: address already in use"
 // port format;  ":<port>"
 // Returns true if an error occured
 func (network *Network) RecieveFile(port string, filename string, contact *Contact, id messageID, fileSize int64, originalSender *[]byte) bool {
@@ -584,7 +630,7 @@ func (network *Network) retrieveFile(port string, fileHash []byte, filename stri
 					store := &Store{}
 					store.filename = filename
 					var filehashStore [20]byte
-					copy(filehashStore[:],fileHash[:])
+					copy(filehashStore[:], fileHash[:])
 					store.filehash = &filehashStore
 					store.fileLength = fileSize
 					storeEx.store = store
@@ -612,6 +658,9 @@ func (network *Network) sendSendFileRequest(contact *Contact, fileHash []byte, f
 		}).Error("Failed to dial UDP address.")
 		error = true
 	} else {
+		// Close connection
+		defer conn.Close()
+
 		sendFile := &protocol.SendFile{}
 		sendFile.FileHash = fileHash
 		sendFile.IPaddress = MyRoutingTable.me.Address
@@ -641,8 +690,6 @@ func (network *Network) sendSendFileRequest(contact *Contact, fileHash []byte, f
 				log.Info("Send file request sent.")
 			}
 		}
-		// Close connection
-		conn.Close()
 	}
 	return error
 }

@@ -26,7 +26,7 @@ func (findValueRequestExecutor *FindValueRequestExecutor) execute() {
 		0)
 	//if the channel return nil then there was error
 	if error {
-		log.Info("Error to send FindValue message.")
+		log.Error("Error to send FindValue message.")
 		destroyRoutine(findValueRequestExecutor.id)
 		if findValueRequestExecutor.callback != nil {
 			(*findValueRequestExecutor.callback).errorRequest(findValueRequestExecutor.contact)

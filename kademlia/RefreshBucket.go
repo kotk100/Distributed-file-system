@@ -6,8 +6,6 @@ import (
 	"time"
 )
 
-// TODO randomize execution times
-
 type RefreshBucketTask struct {
 	task    *Task
 	orgTime time.Duration

@@ -2,6 +2,6 @@ syntax = "proto3";
 package protocol;
 
 message UnPin {
-    bytes fileHash = 1;
-    bytes password = 2;
+    string fileHash = 1;
+    string passwordHash = 2;
 }

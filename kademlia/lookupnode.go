@@ -59,14 +59,14 @@ func (lookupNode *LookupNode) setLookUpNodeSender(lookNodeSender LookNodeSender)
 func (lookupNode *LookupNode) Start() {
 	contactsCloseOfTarget := MyRoutingTable.FindClosestContactsNotInTheSlice(lookupNode.target.ID, alpha, lookupNode.failedContacts)
 	if len(contactsCloseOfTarget) != 0 {
+		log.WithFields(log.Fields{
+			"Contacts alpha": contactsCloseOfTarget,
+		}).Info("Start find node.")
 		for _, element := range contactsCloseOfTarget {
 			lookupNodeContact := NewLookupNodeContact(element)
 			lookupNode.shortlist = append(lookupNode.shortlist, lookupNodeContact)
 			lookupNode.sendFindNodeRequest()
 		}
-		log.WithFields(log.Fields{
-			"Contacts alpha": contactsCloseOfTarget,
-		}).Info("Start find node.")
 		lookupNode.lookupNodeParallelism.start()
 	} else {
 		(*lookupNode.lookupNodeCallback).processKClosest(lookupNode.shortlist) //shortlist will be empty
@@ -179,7 +179,7 @@ func (lookupNode *LookupNode) isFailedContact(contact *Contact) bool {
 
 func (lookupNode *LookupNode) contactIsInShortlist(contact *Contact) bool {
 	for _, v := range lookupNode.shortlist {
-		if v.contact.ID.Equals(contact.ID) {
+		if v.contact.ID.Equals(contact.ID) { // TODO runtime error: invalid memory address or nil pointer dereference
 			return true
 		}
 	}
