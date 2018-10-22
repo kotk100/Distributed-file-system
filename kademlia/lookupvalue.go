@@ -9,7 +9,7 @@ import (
 
 type LookupValueCallback interface {
 	contactWithFile(contact Contact, findValueRpc *protocol.FindValue, contacts []Contact)
-	fileContents(fileContents []byte)
+	fileContents(fileContents []byte,stringPath string)
 	noContactWithFileFound(contacts []Contact)
 }
 
@@ -60,7 +60,7 @@ func (lookupValue *LookupValue) start() {
 						"file string": stringPath,
 					}).Info("Error to get file contents")
 				} else {
-					(*lookupValue.lookupValueCallback).fileContents(fileContents)
+					(*lookupValue.lookupValueCallback).fileContents(fileContents,stringPath)
 				}
 			}
 		}

@@ -504,7 +504,7 @@ func (network *Network) RecieveFile(port string, filename string, contact *Conta
 	return false
 }
 
-func (network *Network) retrieveFile(port string, fileHash []byte, filename string, contact *Contact, fileSize int64, originalSender *[]byte, contactToSendStore *Contact) bool {
+func (network *Network) retrieveFile(port string, fileHash []byte, filename string, contact *Contact, fileSize int64, originalSender *[]byte, contactToSendStore *Contact) (bool,string) {
 	server, err := net.Listen("tcp", port)
 
 	if err != nil {
@@ -512,7 +512,7 @@ func (network *Network) retrieveFile(port string, fileHash []byte, filename stri
 			"Error": err,
 		}).Error("Failed to start listening for a TCP connection.")
 
-		return true
+		return true,""
 	}
 
 	log.WithFields(log.Fields{
@@ -529,7 +529,7 @@ func (network *Network) retrieveFile(port string, fileHash []byte, filename stri
 			"Contact": contact,
 		}).Error("Failed to send SendFile request.")
 
-		return true
+		return true,""
 	}
 
 	// Connect to incoming TCP connection
@@ -539,7 +539,7 @@ func (network *Network) retrieveFile(port string, fileHash []byte, filename stri
 			"Error": err,
 		}).Error("Failed to accept a TCP connection.")
 
-		return true
+		return true,""
 	}
 	log.WithFields(log.Fields{
 		"Port":    port,
@@ -552,7 +552,7 @@ func (network *Network) retrieveFile(port string, fileHash []byte, filename stri
 		log.WithFields(log.Fields{
 			"filename": filename,
 		}).Error("Failed to create file for writing.")
-		return true
+		return true,""
 	}
 
 	defer fileWriter.close()
@@ -569,7 +569,7 @@ func (network *Network) retrieveFile(port string, fileHash []byte, filename stri
 				"bytes read": n,
 			}).Error("Failed to read bytes from TCP connection.")
 
-			return true
+			return true,""
 		}
 
 		// Store last part of file
@@ -581,7 +581,7 @@ func (network *Network) retrieveFile(port string, fileHash []byte, filename stri
 					"buffer": &buffer,
 				}).Error("Failed to write bytes to file.")
 
-				return true
+				return true,""
 			}
 
 			break
@@ -592,7 +592,7 @@ func (network *Network) retrieveFile(port string, fileHash []byte, filename stri
 					"buffer": &buffer,
 				}).Error("Failed to write bytes to file.")
 
-				return true
+				return true,""
 			}
 			receivedBytes += BUFFERSIZE
 
@@ -644,7 +644,7 @@ func (network *Network) retrieveFile(port string, fileHash []byte, filename stri
 	log.WithFields(log.Fields{
 		"Filename": filename,
 	}).Info("END FILE VALUE-----")
-	return false
+	return false,stringPathFindValue
 }
 
 func (network *Network) sendSendFileRequest(contact *Contact, fileHash []byte, fileSize int64) bool {

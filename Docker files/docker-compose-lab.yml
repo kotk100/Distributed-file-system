@@ -70,6 +70,21 @@ services:
     networks:
     - kademlia_network
 
+  serverdeamon:
+    image: test/sd:latest
+    stdin_open: true
+    tty: true
+    depends_on:
+    - "kademlia_network"
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+    ports:
+    - "80:8000"
+    networks:
+    - kademlia_network
+
 networks:
   kademlia_network:
     ipam:

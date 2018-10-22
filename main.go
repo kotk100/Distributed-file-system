@@ -3,12 +3,25 @@ package main
 import (
 	"./kademlia"
 	"bufio"
+	"encoding/json"
 	"fmt"
+	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
+	"net/http"
 	"os"
 	"runtime"
 	"runtime/pprof"
 )
+
+type StoreFileResponse struct {
+	Error    string
+	HashFile string
+}
+
+type UnpinResponse struct {
+	Error string
+	Info string
+}
 
 func init() {
 	// Log output
@@ -17,9 +30,52 @@ func init() {
 	log.SetLevel(log.InfoLevel)
 }
 
+func StoreFile(w http.ResponseWriter, r *http.Request) {
+	file, header, err := r.FormFile("file")
+	password := r.FormValue("password")
+	if err != nil {
+		storeFileResponse := StoreFileResponse{"error to access to the file", ""}
+		json.NewEncoder(w).Encode(storeFileResponse)
+	} else {
+		buffer := make([]byte, header.Size)
+		file.Read(buffer)
+		defer file.Close()
+		store := kademlia.CreateNewStore(&buffer, []byte(password), header.Filename)
+		store.StartStore()
+		storeFileResponse := StoreFileResponse{"", store.GetHash()}
+		json.NewEncoder(w).Encode(storeFileResponse)
+	}
+}
+
+func GetFile(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	testFindValue := kademlia.NewLookupValueManager(kademlia.StringToHash(params["hashfile"])[:], w, r)
+	testFindValue.FindValue()
+}
+
+func UnpinFile(w http.ResponseWriter, r *http.Request) {
+	password := r.FormValue("password")
+	hashfile := r.FormValue("hashfile")
+	unpin := kademlia.CreateUnpinExecutor(hashfile, []byte(password))
+	unpin.StartUnpin()
+	unpinResponse := UnpinResponse{"","Unpin executed"}
+	json.NewEncoder(w).Encode(unpinResponse)
+}
+
+func setRestAPI() {
+	log.Info("start rest api access")
+	router := mux.NewRouter()
+	router.HandleFunc("/file", StoreFile).Methods("POST")
+	router.HandleFunc("/file/{hashfile}", GetFile).Methods("GET")
+	router.HandleFunc("/file/unpin", UnpinFile).Methods("DELETE")
+	log.Fatal(http.ListenAndServe(":3000", router))
+}
+
 func main() {
 	//kademlia.Listen("10.0.0.1", 4658)
 	log.Info("Hello, World!")
+
+	go setRestAPI()
 
 	// Create a task scheduler
 	periodicTasks := kademlia.CreatePeriodicTasks()
@@ -50,8 +106,8 @@ func main() {
 		kademlia.SendAndRecievePing(*contact, &bootstrap)
 	}
 
-	/*dRT := kademlia.DisplayRoutingTableClock{}
-	go dRT.Display()*/
+	dRT := kademlia.DisplayRoutingTableClock{}
+	go dRT.Display()
 
 	// TODO infinite loop for find_node where two nodes think the other one is the original sender and constantly send eachother responses
 
@@ -78,10 +134,10 @@ func main() {
 		case "2":
 			fmt.Println("Write file hash:")
 			scanner.Scan()
-			hash := scanner.Text()
+			//hash := scanner.Text()
 
-			testFindValue := kademlia.NewLookupValueManager(kademlia.StringToHash(hash)[:])
-			go testFindValue.FindValue()
+			//testFindValue := kademlia.NewLookupValueManager(kademlia.StringToHash(hash)[:])
+			//go testFindValue.FindValue()
 		case "3":
 			fmt.Println("Write file hash:")
 			scanner.Scan()
