@@ -70,7 +70,8 @@ func (lookupValueManager *LookupValueManager) contactWithFile(contact Contact, f
 
 func (lookupValueManager *LookupValueManager) noContactWithFileFound(contacts []Contact) {
 	log.Info("Test find value : noContactWithFileFound")
-	(*lookupValueManager.w).WriteHeader(http.StatusNotFound)
+	RequestError := RequestError{"error to retrieve file"}
+	json.NewEncoder(*lookupValueManager.w).Encode(RequestError)
 }
 
 func (lookupValueManager *LookupValueManager) fileContents(fileContents []byte, stringPath string) {
