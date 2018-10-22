@@ -8,7 +8,7 @@ import (
 )
 
 type LookupValueCallback interface {
-	contactWithFile(contact Contact, findValueRpc *protocol.FindValue, contacts []Contact)
+	contactWithFile(contact Contact, findValueRpc *protocol.FindValue, contacts []LookupNodeContact)
 	fileContents(fileContents []byte,stringPath string)
 	noContactWithFileFound(contacts []Contact)
 }
@@ -82,7 +82,7 @@ func (lookupValue *LookupValue) successRequest(contact Contact, contacts []Conta
 			}).Info("Found contact which contains the file")
 			lookupValue.lookupNode.stop()
 			lookupValue.hasBeenFound = true
-			(*lookupValue.lookupValueCallback).contactWithFile(contact, findValueRpc, contacts)
+			(*lookupValue.lookupValueCallback).contactWithFile(contact, findValueRpc, lookupValue.lookupNode.shortlist)
 		} else {
 			lookupValue.lookupNode.successRequest(contact, contacts)
 		}

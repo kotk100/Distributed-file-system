@@ -38,7 +38,7 @@ func (lookupValueManager *LookupValueManager) FindValue() {
 	lookupValue.start()
 }
 
-func (lookupValueManager *LookupValueManager) contactWithFile(contact Contact, findValueRpc *protocol.FindValue, contacts []Contact) {
+func (lookupValueManager *LookupValueManager) contactWithFile(contact Contact, findValueRpc *protocol.FindValue, contacts []LookupNodeContact) {
 	log.WithFields(log.Fields{
 		"Contact":    contact,
 		"find value": findValueRpc,
@@ -47,8 +47,9 @@ func (lookupValueManager *LookupValueManager) contactWithFile(contact Contact, f
 	network := Network{}
 	portStr := os.Getenv("FILE_TRANSFER_PORT")
 	originalSender := MyRoutingTable.me.ID[:]
-	if len(contacts) > 0 && !contact.ID.Equals(contacts[0].ID) {
-		error, pathFile := network.retrieveFile(portStr, lookupValueManager.fileHash, findValueRpc.FileName, &contact, findValueRpc.FileSize, &originalSender, &contacts[0])
+	if len(contacts) > 0 && !contact.ID.Equals(contacts[0].contact.ID) {
+		firstContact := contacts[0].contact
+		error, pathFile := network.retrieveFile(portStr, lookupValueManager.fileHash, findValueRpc.FileName, &contact, findValueRpc.FileSize, &originalSender, &firstContact)
 		if error {
 			RequestError := RequestError{"error to retrieve file"}
 			json.NewEncoder(*lookupValueManager.w).Encode(RequestError)
