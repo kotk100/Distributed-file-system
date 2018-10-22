@@ -47,26 +47,24 @@ func (lookupValueManager *LookupValueManager) contactWithFile(contact Contact, f
 	network := Network{}
 	portStr := os.Getenv("FILE_TRANSFER_PORT")
 	originalSender := MyRoutingTable.me.ID[:]
-	if len(contacts) > 0 && !contact.ID.Equals(contacts[0].contact.ID) {
-		firstContact := contacts[0].contact
-		error, pathFile := network.retrieveFile(portStr, lookupValueManager.fileHash, findValueRpc.FileName, &contact, findValueRpc.FileSize, &originalSender, &firstContact)
-		if error {
-			RequestError := RequestError{"error to retrieve file"}
-			json.NewEncoder(*lookupValueManager.w).Encode(RequestError)
-		}else{
-			(*lookupValueManager.w).Header().Set("file_name", getDownloadFileName(pathFile))
-			http.ServeFile(*lookupValueManager.w, lookupValueManager.r, pathFile)
-		}
+	contactDidntSendValue := getClosestContactSeenWhichDidntSendFile(contact, contacts)
+	error, pathFile := network.retrieveFile(portStr, lookupValueManager.fileHash, findValueRpc.FileName, &contact, findValueRpc.FileSize, &originalSender, contactDidntSendValue)
+	if error {
+		RequestError := RequestError{"error to retrieve file"}
+		json.NewEncoder(*lookupValueManager.w).Encode(RequestError)
 	} else {
-		error, pathFile := network.retrieveFile(portStr, lookupValueManager.fileHash, findValueRpc.FileName, &contact, findValueRpc.FileSize, &originalSender, nil)
-		if error {
-			RequestError := RequestError{"error to retrieve file"}
-			json.NewEncoder(*lookupValueManager.w).Encode(RequestError)
-		}else{
-			(*lookupValueManager.w).Header().Set("file_name", getDownloadFileName(pathFile))
-			http.ServeFile(*lookupValueManager.w, lookupValueManager.r, pathFile)
-		}
+		(*lookupValueManager.w).Header().Set("file_name", getDownloadFileName(pathFile))
+		http.ServeFile(*lookupValueManager.w, lookupValueManager.r, pathFile)
 	}
+}
+
+func getClosestContactSeenWhichDidntSendFile(conctatWhichSendValue Contact, contacts []LookupNodeContact) *Contact {
+	if len(contacts) > 0 && !conctatWhichSendValue.ID.Equals(contacts[0].contact.ID) {
+		return &contacts[0].contact
+	} else if len(contacts) > 1 && !conctatWhichSendValue.ID.Equals(contacts[1].contact.ID) {
+		return &contacts[1].contact
+	}
+	return nil
 }
 
 func (lookupValueManager *LookupValueManager) noContactWithFileFound(contacts []Contact) {
@@ -83,7 +81,7 @@ func (lookupValueManager *LookupValueManager) fileContents(fileContents []byte, 
 	http.ServeFile(*lookupValueManager.w, lookupValueManager.r, stringPath)
 }
 
-func getDownloadFileName(stringPath string) string{
+func getDownloadFileName(stringPath string) string {
 	filePathPart := strings.Split(stringPath, "/")
 	fileNamePart := strings.Split(filePathPart[len(filePathPart)-1], ":")
 	return fileNamePart[len(fileNamePart)-2]
