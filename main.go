@@ -21,7 +21,12 @@ type StoreFileResponse struct {
 
 type UnpinResponse struct {
 	Error string
-	Info string
+	Info  string
+}
+
+type GetFileResponse struct {
+	Error string
+	Info  string
 }
 
 func init() {
@@ -50,8 +55,14 @@ func StoreFile(w http.ResponseWriter, r *http.Request) {
 
 func GetFile(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
-	testFindValue := kademlia.NewLookupValueManager(kademlia.StringToHash(params["hashfile"])[:], w, r)
-	testFindValue.FindValue()
+	hashValue,err := kademlia.StringToHash(params["hashfile"])
+	if err != nil {
+		getFileResponse := GetFileResponse{"error with hash file", ""}
+		json.NewEncoder(w).Encode(getFileResponse)
+	} else {
+		testFindValue := kademlia.NewLookupValueManager(hashValue[:], &w, r)
+		testFindValue.FindValue()
+	}
 }
 
 func UnpinFile(w http.ResponseWriter, r *http.Request) {
@@ -59,7 +70,7 @@ func UnpinFile(w http.ResponseWriter, r *http.Request) {
 	hashfile := r.FormValue("hashfile")
 	unpin := kademlia.CreateUnpinExecutor(hashfile, []byte(password))
 	unpin.StartUnpin()
-	unpinResponse := UnpinResponse{"","Unpin executed"}
+	unpinResponse := UnpinResponse{"", "Unpin executed"}
 	json.NewEncoder(w).Encode(unpinResponse)
 }
 

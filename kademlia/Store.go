@@ -134,7 +134,7 @@ func CreateNewStore(file *[]byte, password []byte, originalFilename string) *Sto
 func CreateNewStoreForRepublish(fileHash string) *Store {
 	store := &Store{}
 
-	hash := StringToHash(fileHash)
+	hash,_ := StringToHash(fileHash)
 	store.filehash = hash
 
 	store.filename = getFilenameFromHash(fileHash)

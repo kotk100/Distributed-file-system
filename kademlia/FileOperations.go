@@ -107,21 +107,17 @@ func hashToString(hash []byte) string {
 	return hex.EncodeToString(hash)
 }
 
-func StringToHash(fileHash string) *[20]byte {
+func StringToHash(fileHash string) (*[20]byte,error) {
 	hash, error := hex.DecodeString(fileHash)
-
+	var byteHash [20]byte
 	if error != nil {
 		log.WithFields(log.Fields{
 			"error": error,
 		}).Error("Failed converting string back to hash.")
-
-		return nil
+	} else{
+		copy(byteHash[:], hash)
 	}
-
-	var byteHash [20]byte
-	copy(byteHash[:], hash)
-
-	return &byteHash
+	return &byteHash,error
 }
 
 func getHashFromFilename(filename string) string {
