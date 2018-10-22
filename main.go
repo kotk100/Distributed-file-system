@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
+	"github.com/rs/cors"
 	log "github.com/sirupsen/logrus"
 	"net/http"
 	"os"
@@ -63,12 +64,18 @@ func UnpinFile(w http.ResponseWriter, r *http.Request) {
 }
 
 func setRestAPI() {
-	log.Info("start rest api access")
+	c := cors.New(cors.Options{
+		AllowCredentials: true,
+		AllowedHeaders:   []string{"Content-Type", "Content-Disposition", "Origin", "Accept", "X-Requested-With"},
+		AllowedOrigins:   []string{"*"}, // All origins
+		AllowedMethods:   []string{"GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS"},
+		ExposedHeaders:   []string{"file_name"},
+	})
 	router := mux.NewRouter()
-	router.HandleFunc("/file", StoreFile).Methods("POST")
-	router.HandleFunc("/file/{hashfile}", GetFile).Methods("GET")
-	router.HandleFunc("/file/unpin", UnpinFile).Methods("DELETE")
-	log.Fatal(http.ListenAndServe(":3000", router))
+	router.HandleFunc("/file", StoreFile)
+	router.HandleFunc("/unpin", UnpinFile)
+	router.HandleFunc("/file/{hashfile}", GetFile)
+	log.Fatal(http.ListenAndServe(":3000", c.Handler(router)))
 }
 
 func main() {
