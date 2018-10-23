@@ -1,24 +1,25 @@
 package kademlia
 
 import (
+	"./protocol"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"math/rand"
+	"os"
 	"testing"
 	"time"
-	"./protocol"
 )
 
-type MockedNetwork struct{
+type MockedNetwork struct {
 	mock.Mock
 }
 
-func (mockedNetwork *MockedNetwork) SendPingMessage(originalSender *KademliaID,contact *Contact, messageID messageID) bool {
-	args := mockedNetwork.Called(originalSender ,contact, messageID )
+func (mockedNetwork *MockedNetwork) SendPingMessage(originalSender *KademliaID, contact *Contact, messageID messageID) bool {
+	args := mockedNetwork.Called(originalSender, contact, messageID)
 	return args.Bool(0)
 }
 
-func containContact(bucket *bucket,contact *Contact)  bool{
+func containContact(bucket *bucket, contact *Contact) bool {
 	for e := bucket.list.Front(); e != nil; e = e.Next() {
 		nodeID := e.Value.(Contact).ID
 		if (contact).ID.Equals(nodeID) {
@@ -28,7 +29,7 @@ func containContact(bucket *bucket,contact *Contact)  bool{
 	return false
 }
 
-func fillUpBucket(bucket *bucket){
+func fillUpBucket(bucket *bucket) {
 	bucket.AddContact(NewContact(NewKademliaID("FFFFFFFF00000000000001000000003420000000"), "localhost:8001"))
 	bucket.AddContact(NewContact(NewKademliaID("FFFFFFFF00000000000001036400000000000000"), "localhost:8001"))
 	bucket.AddContact(NewContact(NewKademliaID("FFFFFFFF00000000000001000340000000000000"), "localhost:8001"))
@@ -51,23 +52,32 @@ func fillUpBucket(bucket *bucket){
 	bucket.AddContact(NewContact(NewKademliaID("FFFFFFFF00222000000001000000000000000000"), "localhost:8001"))
 }
 
-func TestBucketIsEmptyAtTheBeginning(t *testing.T){
-	bucket:=newBucket()
+func TestBucketIsEmptyAtTheBeginning(t *testing.T) {
+	bucket := newBucket()
 	assert.Equal(t, 0, bucket.Len(), "size should be 0 at the beginning")
 }
 
-func TestBucketShouldAddAContactWhenIsNotFull(t *testing.T){
+func TestBucketShouldAddAContactWhenIsNotFull(t *testing.T) {
+	os.Setenv("TIME_VARIATION", "0")
+	os.Setenv("BUCKET_REFRESH_TIME", "3600")
+	// Create a task scheduler
+	periodicTasks := CreatePeriodicTasks()
+	PeriodicTasksReference = periodicTasks
 	InitMyInformation("test")
-	bucket:=newBucket()
+	bucket := newBucket()
 	contact := NewContact(NewKademliaID("FFFFFFFF00000000000000000000000000000000"), "localhost:8001")
 	bucket.AddContact(contact)
 	assert.Equal(t, 1, bucket.Len(), "size should be 1 after adding a contact")
-	assert.Equal(t, true, containContact(bucket,&contact), "contact should be in the list")
+	assert.Equal(t, true, containContact(bucket, &contact), "contact should be in the list")
 }
 
-func TestContactShouldMoveToFront(t *testing.T){
+func TestContactShouldMoveToFront(t *testing.T) {
+	os.Setenv("TIME_VARIATION", "0")
+	os.Setenv("BUCKET_REFRESH_TIME", "3600")
+	periodicTasks := CreatePeriodicTasks()
+	PeriodicTasksReference = periodicTasks
 	InitMyInformation("test")
-	bucket:=newBucket()
+	bucket := newBucket()
 	contact1 := NewContact(NewKademliaID("FFFFFFFF00000000000001000000000000000000"), "localhost:8001")
 	bucket.AddContact(contact1)
 	contact2 := NewContact(NewKademliaID("FFFFFFFF00000000000000100000000000000000"), "localhost:8001")
@@ -81,9 +91,13 @@ func TestContactShouldMoveToFront(t *testing.T){
 	assert.Equal(t, contact1.ID, bucket.list.Front().Value.(Contact).ID, "ID should be the same")
 }
 
-func TestInsertContactWhenBucketIsFullAndOldestContactTimeOut(t *testing.T){
+func TestInsertContactWhenBucketIsFullAndOldestContactTimeOut(t *testing.T) {
+	os.Setenv("TIME_VARIATION", "0")
+	os.Setenv("BUCKET_REFRESH_TIME", "3600")
+	periodicTasks := CreatePeriodicTasks()
+	PeriodicTasksReference = periodicTasks
 	InitMyInformation("test")
-	bucket:=newBucket()
+	bucket := newBucket()
 
 	ch := make(chan *protocol.RPC)
 
@@ -95,20 +109,20 @@ func TestInsertContactWhenBucketIsFullAndOldestContactTimeOut(t *testing.T){
 	fillUpBucket(bucket)
 
 	contactToInsert := NewContact(NewKademliaID("FFFFFFFF00000100000000000000000000001234"), "localhost:8001")
-	oldestContact:=NewContact(NewKademliaID("FFFFFFFF00000000000001000000003420000000"), "localhost:8001")
+	oldestContact := NewContact(NewKademliaID("FFFFFFFF00000000000001000000003420000000"), "localhost:8001")
 
 	testObj := new(MockedNetwork)
-	testObj.On("SendPingMessage", MyRoutingTable.me.ID,&oldestContact,messageID).Return(false)
+	testObj.On("SendPingMessage", MyRoutingTable.me.ID, &oldestContact, messageID).Return(false)
 	bucket.networkAPI = testObj
 
 	bucket.contactToInsert = contactToInsert
 	bucket.muxAdd.Lock()
 
-	pingBucketRequestExecutor:= PingBucketRequestExecutor{}
-	pingBucketRequestExecutor.contact = &oldestContact
+	pingBucketRequestExecutor := PingBucketRequestExecutor{}
+	pingBucketRequestExecutor.contact = oldestContact
 	pingBucketRequestExecutor.bucket = bucket
 	pingBucketRequestExecutor.id = messageID
-	pingBucketRequestExecutor.ch=ch
+	pingBucketRequestExecutor.ch = ch
 	go pingBucketRequestExecutor.execute()
 
 	time.Sleep(11 * time.Second)
@@ -117,10 +131,13 @@ func TestInsertContactWhenBucketIsFullAndOldestContactTimeOut(t *testing.T){
 	assert.Equal(t, contactToInsert.ID, bucket.list.Front().Value.(Contact).ID, "ID should be the same")
 }
 
-
-func TestInsertContactWhenBucketIsFullAndErrorToSendPing(t *testing.T){
+func TestInsertContactWhenBucketIsFullAndErrorToSendPing(t *testing.T) {
+	os.Setenv("TIME_VARIATION", "0")
+	os.Setenv("BUCKET_REFRESH_TIME", "3600")
+	periodicTasks := CreatePeriodicTasks()
+	PeriodicTasksReference = periodicTasks
 	InitMyInformation("test")
-	bucket:=newBucket()
+	bucket := newBucket()
 
 	ch := make(chan *protocol.RPC)
 
@@ -132,19 +149,19 @@ func TestInsertContactWhenBucketIsFullAndErrorToSendPing(t *testing.T){
 	fillUpBucket(bucket)
 
 	contactToInsert := NewContact(NewKademliaID("FFFFFFFF00000100000000000000000000001234"), "localhost:8001")
-	oldestContact:=NewContact(NewKademliaID("FFFFFFFF00000000000001000000003420000000"), "localhost:8001")
+	oldestContact := NewContact(NewKademliaID("FFFFFFFF00000000000001000000003420000000"), "localhost:8001")
 
 	testObj := new(MockedNetwork)
-	testObj.On("SendPingMessage", MyRoutingTable.me.ID,&oldestContact,messageID).Return(true)
+	testObj.On("SendPingMessage", MyRoutingTable.me.ID, &oldestContact, messageID).Return(true)
 	bucket.networkAPI = testObj
 
 	bucket.contactToInsert = contactToInsert
 	bucket.muxAdd.Lock()
-	pingBucketRequestExecutor:= PingBucketRequestExecutor{}
-	pingBucketRequestExecutor.contact = &oldestContact
+	pingBucketRequestExecutor := PingBucketRequestExecutor{}
+	pingBucketRequestExecutor.contact = oldestContact
 	pingBucketRequestExecutor.bucket = bucket
 	pingBucketRequestExecutor.id = messageID
-	pingBucketRequestExecutor.ch=ch
+	pingBucketRequestExecutor.ch = ch
 	go pingBucketRequestExecutor.execute()
 
 	time.Sleep(2 * time.Second)
@@ -153,10 +170,13 @@ func TestInsertContactWhenBucketIsFullAndErrorToSendPing(t *testing.T){
 	assert.Equal(t, contactToInsert.ID, bucket.list.Front().Value.(Contact).ID, "ID should be the same")
 }
 
-
-func TestInsertContactWhenBucketIsFullAndOldestContactAnswer(t *testing.T){
+func TestInsertContactWhenBucketIsFullAndOldestContactAnswer(t *testing.T) {
+	os.Setenv("TIME_VARIATION", "0")
+	os.Setenv("BUCKET_REFRESH_TIME", "3600")
+	periodicTasks := CreatePeriodicTasks()
+	PeriodicTasksReference = periodicTasks
 	InitMyInformation("test")
-	bucket:=newBucket()
+	bucket := newBucket()
 
 	ch := make(chan *protocol.RPC)
 
@@ -168,24 +188,23 @@ func TestInsertContactWhenBucketIsFullAndOldestContactAnswer(t *testing.T){
 	fillUpBucket(bucket)
 
 	bucket.contactToInsert = NewContact(NewKademliaID("FFFFFFFF00000100000000000000000000001234"), "localhost:8001")
-	oldestContact:=NewContact(NewKademliaID("FFFFFFFF00000000000001000000003420000000"), "localhost:8001")
+	oldestContact := NewContact(NewKademliaID("FFFFFFFF00000000000001000000003420000000"), "localhost:8001")
 
 	testObj := new(MockedNetwork)
-	testObj.On("SendPingMessage", MyRoutingTable.me.ID,&oldestContact,messageID).Return(false)
+	testObj.On("SendPingMessage", MyRoutingTable.me.ID, &oldestContact, messageID).Return(false)
 	bucket.networkAPI = testObj
 
 	bucket.muxAdd.Lock()
-	pingBucketRequestExecutor:= PingBucketRequestExecutor{}
-	pingBucketRequestExecutor.contact = &oldestContact
+	pingBucketRequestExecutor := PingBucketRequestExecutor{}
+	pingBucketRequestExecutor.contact = oldestContact
 	pingBucketRequestExecutor.bucket = bucket
 	pingBucketRequestExecutor.id = messageID
-	pingBucketRequestExecutor.ch=ch
+	pingBucketRequestExecutor.ch = ch
 	go pingBucketRequestExecutor.execute()
 
-	ch <-&protocol.RPC{}
+	ch <- &protocol.RPC{}
 	time.Sleep(2 * time.Second)
 
 	assert.Equal(t, 20, bucket.Len(), "size should be 20")
 	assert.Equal(t, oldestContact.ID, bucket.list.Front().Value.(Contact).ID, "ID should be the same")
 }
-

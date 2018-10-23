@@ -55,7 +55,7 @@ func StoreFile(w http.ResponseWriter, r *http.Request) {
 
 func GetFile(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
-	hashValue,err := kademlia.StringToHash(params["hashfile"])
+	hashValue, err := kademlia.StringToHash(params["hashfile"])
 	if err != nil {
 		getFileResponse := GetFileResponse{"error with hash file", ""}
 		json.NewEncoder(w).Encode(getFileResponse)
@@ -124,10 +124,8 @@ func main() {
 		kademlia.SendAndRecievePing(*contact, &bootstrap)
 	}
 
-	dRT := kademlia.DisplayRoutingTableClock{}
-	go dRT.Display()
-
-	// TODO infinite loop for find_node where two nodes think the other one is the original sender and constantly send eachother responses
+	//dRT := kademlia.DisplayRoutingTableClock{}
+	//go dRT.Display()
 
 	// Test saving files
 	scanner := bufio.NewScanner(os.Stdin)

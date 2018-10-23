@@ -18,3 +18,7 @@ Run further commands on the first PC (Swarm manager).
 
 ## Compiling ProtoBuf files
 `protoc --proto_path="Protocol files/" --go_out="kademlia/protocol/" "<file>.proto"`
+
+## Testing
+`go test -coverprofile cp.out`
+`go tool cover -html=cp.out`

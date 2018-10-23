@@ -181,8 +181,8 @@ func checkAndRemoveFile(filehash string, passwordHash string) bool {
 		filename := getFilenameFromHash(filehash)
 		s := strings.Split(filename, ":")
 
-		// Check if the password hash matches the actual file
-		if len(s) >= 2 && s[1] == passwordHash {
+		// Check if the password hash matches the actual file and the password is set, otherwise don't allow deletion
+		if len(s) >= 2 && s[1] != "" && s[1] == passwordHash {
 			removeFileAndPeriodicTasks(filehash)
 			return true
 		} else {

@@ -121,8 +121,11 @@ func (periodicTasks *PeriodicTasks) addTask(timeToExecute *time.Time, task *Task
 
 func (periodicTasks *PeriodicTasks) addTaskInternal(timeToExecute *time.Time, task *Task, forceWakeUp bool) {
 	// Randomize timeToExecute
-	rand := rand2.Int63n(periodicTasks.variance*2) - periodicTasks.variance
-	timeToExecuteRand := timeToExecute.Add(time.Duration(rand))
+	timeToExecuteRand := *timeToExecute
+	if periodicTasks.variance != 0 {
+		rand := rand2.Int63n(periodicTasks.variance*2) - periodicTasks.variance
+		timeToExecuteRand = timeToExecute.Add(time.Duration(rand))
+	}
 
 	periodicTasks.mapLock.Lock()
 
