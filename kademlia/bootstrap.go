@@ -2,7 +2,6 @@ package kademlia
 
 import (
 	log "github.com/sirupsen/logrus"
-	"strconv"
 	"time"
 )
 
@@ -18,7 +17,7 @@ func (bootstrap *Bootstrap) processKClosest(KClosestOfTarget []LookupNodeContact
 	// Refresh empty buckets
 	log.Info("Refreshing empty buckets.")
 
-	for i := 0; i < IDLength*8; i++ {
+	/*for i := 0; i < IDLength*8; i++ {
 		task := &Task{}
 		task.id = strconv.Itoa(i)
 		task.taskType = RefreshBucket
@@ -28,7 +27,7 @@ func (bootstrap *Bootstrap) processKClosest(KClosestOfTarget []LookupNodeContact
 			timeToExecute := time.Now().Add(time.Duration(i) * 1000 * time.Millisecond)
 			PeriodicTasksReference.updateTaskWithTime(task, &timeToExecute)
 		}
-	}
+	}*/
 }
 
 // Callback for pinging bootstraping node at start

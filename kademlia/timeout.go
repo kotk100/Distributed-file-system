@@ -28,13 +28,11 @@ func (timeout *Timeout) start() {
 func (timeout *Timeout) run() {
 	select {
 	case <-timeout.timeoutStop:
-		close(timeout.ch)
 		return
 	case <-time.After(5 * time.Second):
 		if !timeout.isTimeout {
 			timeout.isTimeout = true
 			timeout.ch <- nil
-			close(timeout.ch)
 		}
 		return
 	}
