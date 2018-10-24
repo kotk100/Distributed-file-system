@@ -13,7 +13,7 @@ type LookupValueManager struct {
 	fileHash []byte
 	w        *http.ResponseWriter
 	r        *http.Request
-	c     chan bool
+	c        chan bool
 }
 
 type RequestError struct {
@@ -30,9 +30,6 @@ func NewLookupValueManager(fileHash []byte, w *http.ResponseWriter, r *http.Requ
 }
 
 func (lookupValueManager *LookupValueManager) FindValue() {
-
-	log.Error("Start find value")
-
 	log.WithFields(log.Fields{
 		"file hash": hashToString(lookupValueManager.fileHash),
 	}).Info("Start find value")
@@ -52,14 +49,19 @@ func (lookupValueManager *LookupValueManager) contactWithFile(contact Contact, f
 	originalSender := MyRoutingTable.me.ID[:]
 	contactDidntSendValue := getClosestContactSeenWhichDidntSendFile(contact, contacts)
 	error, pathFile := network.retrieveFile(portStr, lookupValueManager.fileHash, findValueRpc.FileName, &contact, findValueRpc.FileSize, &originalSender, contactDidntSendValue)
-	if error {
-		RequestError := RequestError{"error to retrieve file"}
-		json.NewEncoder(*lookupValueManager.w).Encode(RequestError)
-	} else {
-		(*lookupValueManager.w).Header().Set("file_name", getDownloadFileName(pathFile))
-		http.ServeFile(*lookupValueManager.w, lookupValueManager.r, pathFile)
+	if lookupValueManager.r != nil {
+		if error {
+			RequestError := RequestError{"error to retrieve file"}
+			json.NewEncoder(*lookupValueManager.w).Encode(RequestError)
+		} else {
+			(*lookupValueManager.w).Header().Set("file_name", getDownloadFileName(pathFile))
+			http.ServeFile(*lookupValueManager.w, lookupValueManager.r, pathFile)
+		}
+		lookupValueManager.c <- true
+	}else{
+
 	}
-	lookupValueManager.c <- true
+
 }
 
 func getClosestContactSeenWhichDidntSendFile(conctatWhichSendValue Contact, contacts []LookupNodeContact) *Contact {
@@ -73,19 +75,23 @@ func getClosestContactSeenWhichDidntSendFile(conctatWhichSendValue Contact, cont
 
 func (lookupValueManager *LookupValueManager) noContactWithFileFound(contacts []Contact) {
 	log.Info("Test find value : noContactWithFileFound")
-	(*lookupValueManager.w).Header().Set("file_name", "NULL")
-	RequestError := RequestError{"error to retrieve file"}
-	json.NewEncoder(*lookupValueManager.w).Encode(RequestError)
-	lookupValueManager.c <- true
+	if lookupValueManager.r != nil {
+		(*lookupValueManager.w).Header().Set("file_name", "NULL")
+		RequestError := RequestError{"error to retrieve file"}
+		json.NewEncoder(*lookupValueManager.w).Encode(RequestError)
+		lookupValueManager.c <- true
+	}
 }
 
 func (lookupValueManager *LookupValueManager) fileContents(fileContents []byte, stringPath string) {
 	log.WithFields(log.Fields{
 		"value": string(fileContents),
 	}).Info("RECEIVED FILE VALUE (saved on the current node).------")
-	(*lookupValueManager.w).Header().Set("file_name", getDownloadFileName(stringPath))
-	http.ServeFile(*lookupValueManager.w, lookupValueManager.r, stringPath)
-	lookupValueManager.c <- true
+	if lookupValueManager.r != nil {
+		(*lookupValueManager.w).Header().Set("file_name", getDownloadFileName(stringPath))
+		http.ServeFile(*lookupValueManager.w, lookupValueManager.r, stringPath)
+		lookupValueManager.c <- true
+	}
 }
 
 func getDownloadFileName(stringPath string) string {

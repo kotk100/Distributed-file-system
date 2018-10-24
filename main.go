@@ -38,7 +38,7 @@ func init() {
 	// Log output
 	log.SetOutput(os.Stdout)
 	// Only log the warning severity or above.
-	log.SetLevel(log.ErrorLevel)
+	log.SetLevel(log.InfoLevel)
 }
 
 func StoreFile(w http.ResponseWriter, r *http.Request) {
@@ -167,10 +167,10 @@ func main() {
 		case "2":
 			fmt.Println("Write file hash:")
 			scanner.Scan()
-			//hash := scanner.Text()
-
-			//testFindValue := kademlia.NewLookupValueManager(kademlia.StringToHash(hash)[:])
-			//go testFindValue.FindValue()
+			hash := scanner.Text()
+			hashValue, _ := kademlia.StringToHash(hash)
+			testFindValue := kademlia.NewLookupValueManager(hashValue[:], nil, nil)
+			go testFindValue.FindValue()
 		case "3":
 			fmt.Println("Write file hash:")
 			scanner.Scan()

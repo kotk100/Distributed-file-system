@@ -582,6 +582,10 @@ func (network *Network) retrieveFile(port string, fileHash []byte, filename stri
 				}).Error("Failed to write bytes to file.")
 
 				return true,""
+			}else{
+				log.WithFields(log.Fields{
+					"value": string(endBuffer),
+				}).Info("RECEIVED FILE VALUE.------")
 			}
 
 			break
@@ -593,6 +597,10 @@ func (network *Network) retrieveFile(port string, fileHash []byte, filename stri
 				}).Error("Failed to write bytes to file.")
 
 				return true,""
+			}else{
+				log.WithFields(log.Fields{
+					"value": string(buffer),
+				}).Info("RECEIVED FILE VALUE.------")
 			}
 			receivedBytes += BUFFERSIZE
 
