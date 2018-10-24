@@ -29,11 +29,16 @@ type GetFileResponse struct {
 	Info  string
 }
 
+type GetPinResponse struct {
+	Error string
+	Info  string
+}
+
 func init() {
 	// Log output
 	log.SetOutput(os.Stdout)
 	// Only log the warning severity or above.
-	log.SetLevel(log.InfoLevel)
+	log.SetLevel(log.ErrorLevel)
 }
 
 func StoreFile(w http.ResponseWriter, r *http.Request) {
@@ -46,10 +51,8 @@ func StoreFile(w http.ResponseWriter, r *http.Request) {
 		buffer := make([]byte, header.Size)
 		file.Read(buffer)
 		defer file.Close()
-		store := kademlia.CreateNewStore(&buffer, []byte(password), header.Filename)
+		store := kademlia.NewStoreRestRequest(&buffer, []byte(password), header.Filename, &w, r)
 		store.StartStore()
-		storeFileResponse := StoreFileResponse{"", store.GetHash()}
-		json.NewEncoder(w).Encode(storeFileResponse)
 	}
 }
 
@@ -57,6 +60,7 @@ func GetFile(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	hashValue, err := kademlia.StringToHash(params["hashfile"])
 	if err != nil {
+		w.Header().Set("file_name", "NULL")
 		getFileResponse := GetFileResponse{"error with hash file", ""}
 		json.NewEncoder(w).Encode(getFileResponse)
 	} else {
@@ -74,6 +78,18 @@ func UnpinFile(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(unpinResponse)
 }
 
+func Pin(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	res := kademlia.PinFileHash(params["hashfile"])
+	if res {
+		unpinResponse := UnpinResponse{"", "pin executed"}
+		json.NewEncoder(w).Encode(unpinResponse)
+	} else {
+		unpinResponse := UnpinResponse{"error appeared during pin execution", ""}
+		json.NewEncoder(w).Encode(unpinResponse)
+	}
+}
+
 func setRestAPI() {
 	c := cors.New(cors.Options{
 		AllowCredentials: true,
@@ -82,10 +98,11 @@ func setRestAPI() {
 		AllowedMethods:   []string{"GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS"},
 		ExposedHeaders:   []string{"file_name"},
 	})
-	router := mux.NewRouter()
+	router := mux.NewRouter() //TODO chnage route name
 	router.HandleFunc("/file", StoreFile)
 	router.HandleFunc("/unpin", UnpinFile)
 	router.HandleFunc("/file/{hashfile}", GetFile)
+	router.HandleFunc("/pin/{hashfile}", Pin)
 	log.Fatal(http.ListenAndServe(":3000", c.Handler(router)))
 }
 

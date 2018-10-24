@@ -13,6 +13,7 @@ type LookupValueManager struct {
 	fileHash []byte
 	w        *http.ResponseWriter
 	r        *http.Request
+	c     chan bool
 }
 
 type RequestError struct {
@@ -24,6 +25,7 @@ func NewLookupValueManager(fileHash []byte, w *http.ResponseWriter, r *http.Requ
 	lookupValueManager.fileHash = fileHash
 	lookupValueManager.w = w
 	lookupValueManager.r = r
+	lookupValueManager.c = make(chan bool)
 	return lookupValueManager
 }
 
@@ -36,6 +38,7 @@ func (lookupValueManager *LookupValueManager) FindValue() {
 	}).Info("Start find value")
 	lookupValue := NewLookupValue(lookupValueManager.fileHash, lookupValueManager)
 	lookupValue.start()
+	<-lookupValueManager.c
 }
 
 func (lookupValueManager *LookupValueManager) contactWithFile(contact Contact, findValueRpc *protocol.FindValue, contacts []LookupNodeContact) {
@@ -56,6 +59,7 @@ func (lookupValueManager *LookupValueManager) contactWithFile(contact Contact, f
 		(*lookupValueManager.w).Header().Set("file_name", getDownloadFileName(pathFile))
 		http.ServeFile(*lookupValueManager.w, lookupValueManager.r, pathFile)
 	}
+	lookupValueManager.c <- true
 }
 
 func getClosestContactSeenWhichDidntSendFile(conctatWhichSendValue Contact, contacts []LookupNodeContact) *Contact {
@@ -69,8 +73,10 @@ func getClosestContactSeenWhichDidntSendFile(conctatWhichSendValue Contact, cont
 
 func (lookupValueManager *LookupValueManager) noContactWithFileFound(contacts []Contact) {
 	log.Info("Test find value : noContactWithFileFound")
+	(*lookupValueManager.w).Header().Set("file_name", "NULL")
 	RequestError := RequestError{"error to retrieve file"}
 	json.NewEncoder(*lookupValueManager.w).Encode(RequestError)
+	lookupValueManager.c <- true
 }
 
 func (lookupValueManager *LookupValueManager) fileContents(fileContents []byte, stringPath string) {
@@ -79,6 +85,7 @@ func (lookupValueManager *LookupValueManager) fileContents(fileContents []byte, 
 	}).Info("RECEIVED FILE VALUE (saved on the current node).------")
 	(*lookupValueManager.w).Header().Set("file_name", getDownloadFileName(stringPath))
 	http.ServeFile(*lookupValueManager.w, lookupValueManager.r, stringPath)
+	lookupValueManager.c <- true
 }
 
 func getDownloadFileName(stringPath string) string {

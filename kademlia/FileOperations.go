@@ -131,8 +131,10 @@ func checkFileExists(filename string) bool {
 
 func getFilenameFromHash(fileHash string) string {
 	filePath := getPathOfFileFromHash(fileHash)
+	if filePath == ""{
+		return ""
+	}
 	filePathPart := strings.Split(filePath, "/")
-
 	return filePathPart[len(filePathPart)-1]
 }
 
@@ -223,8 +225,12 @@ func removeFile(filename string) bool {
 	return true
 }
 
-func pinFileHash(hash string) bool {
-	return pinFileFilename(getFilenameFromHash(hash))
+func PinFileHash(hash string) bool {
+	fileName := getFilenameFromHash(hash)
+	if fileName == ""{
+		return false
+	}
+	return pinFileFilename(fileName)
 }
 
 func getPinnedFilename(filename string) string {
@@ -236,7 +242,7 @@ func pinFileFilename(filename string) bool {
 		return true
 	}
 
-	err := os.Rename(filename, getPinnedFilename(filename))
+	err := os.Rename("/var/File_storage/" + filename,"/var/File_storage/" + getPinnedFilename(filename))
 
 	if err != nil {
 		log.WithFields(log.Fields{
