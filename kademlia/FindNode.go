@@ -14,6 +14,7 @@ func SendAndReceiveFindNode(callback FindNodeRequestCallback, target *KademliaID
 	findNodeRequestExecutor.contact = contact
 	findNodeRequestExecutor.target = target
 	findNodeRequestExecutor.callback = &callback
+	findNodeRequestExecutor.networkAPI = &Network{}
 	createRoutine(&findNodeRequestExecutor)
 }
 

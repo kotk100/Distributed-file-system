@@ -11,12 +11,12 @@ type FindNodeRequestExecutor struct {
 	contact  Contact
 	target   *KademliaID
 	callback *FindNodeRequestCallback
+	networkAPI NetworkAPI
 }
 
 func (findNodeRequestExecutor *FindNodeRequestExecutor) execute() {
 	// Send ping message to other node
-	var network Network
-	error := network.SendFindContactMessage(findNodeRequestExecutor.target,
+	error := findNodeRequestExecutor.networkAPI.SendFindContactMessage(findNodeRequestExecutor.target,
 		MyRoutingTable.me.ID,
 		&findNodeRequestExecutor.contact,
 		make([]Contact, 0),

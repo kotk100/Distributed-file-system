@@ -15,6 +15,7 @@ func SendAndReceiveFindValue(callback FindValueRequestCallback, fileHash []byte,
 	findValueRequestExecutor.contact = contact
 	findValueRequestExecutor.fileHash = fileHash
 	findValueRequestExecutor.callback = &callback
+	findValueRequestExecutor.networkAPI = &Network{}
 	createRoutine(&findValueRequestExecutor)
 }
 

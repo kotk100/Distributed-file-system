@@ -11,12 +11,12 @@ type FindValueRequestExecutor struct {
 	contact  Contact
 	fileHash []byte
 	callback *FindValueRequestCallback
+	networkAPI NetworkAPI
 }
 
 func (findValueRequestExecutor *FindValueRequestExecutor) execute() {
 	// Send ping message to other node
-	var network Network
-	error := network.SendFindDataMessage(findValueRequestExecutor.fileHash,
+	error := findValueRequestExecutor.networkAPI.SendFindDataMessage(findValueRequestExecutor.fileHash,
 		&findValueRequestExecutor.contact,
 		make([]Contact, 0),
 		findValueRequestExecutor.id,

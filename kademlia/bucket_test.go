@@ -3,21 +3,12 @@ package kademlia
 import (
 	"./protocol"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"math/rand"
 	"os"
 	"testing"
 	"time"
 )
 
-type MockedNetwork struct {
-	mock.Mock
-}
-
-func (mockedNetwork *MockedNetwork) SendPingMessage(originalSender *KademliaID, contact *Contact, messageID messageID) bool {
-	args := mockedNetwork.Called(originalSender, contact, messageID)
-	return args.Bool(0)
-}
 
 func containContact(bucket *bucket, contact *Contact) bool {
 	for e := bucket.list.Front(); e != nil; e = e.Next() {

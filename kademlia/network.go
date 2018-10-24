@@ -12,6 +12,8 @@ import (
 
 type NetworkAPI interface {
 	SendPingMessage(originalSender *KademliaID, contact *Contact, messageID messageID) bool
+	SendFindContactMessage(targetId *KademliaID, originalSender *KademliaID, contact *Contact, contacts []Contact, messageID messageID) bool
+	SendFindDataMessage(fileHash []byte, contact *Contact, contacts []Contact, messageID messageID, originalSender *KademliaID, haveTheFile bool, fileName string, fileSize int64) bool
 }
 
 type Network struct {
