@@ -2,60 +2,78 @@ package kademlia
 
 import (
 	"./protocol"
-	"container/list"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/net/context"
 )
 
 type PingBucketRequestExecutor struct {
-	bucket  *bucket
-	ch      chan *protocol.RPC
-	id      messageID
-	contact Contact
+	bucket       *bucket
+	ch           chan *protocol.RPC
+	id           messageID
+	contactToAdd Contact
 }
 
+/*
+bucket.contactupdates.Acquire(context.TODO(), 1)
+	bucket.readers.Acquire(context.TODO(), allowedReaders)
+	bucket.bucketsLocked += 1;
+*/
+
 func (pingBucketRequestExecutor *PingBucketRequestExecutor) execute() {
-	// Send ping message to other node
-	error := pingBucketRequestExecutor.bucket.networkAPI.SendPingMessage(MyRoutingTable.me.ID, &pingBucketRequestExecutor.contact, pingBucketRequestExecutor.id)
+	// Reserve next bucket for pinging
+	pingBucketRequestExecutor.bucket.readers.Acquire(context.TODO(), 1)
+	pingBucketRequestExecutor.bucket.contactupdates.Acquire(context.TODO(), 1)
+	pingBucketRequestExecutor.bucket.readers.Release(1)
 
-	var element *list.Element
-	for e := pingBucketRequestExecutor.bucket.list.Front(); e != nil; e = e.Next() {
-		nodeID := e.Value.(Contact).ID
+	// Dosn't matter if the contact is changed in between these two statements
+	// Do it in two steps so that if all the contacts are locked a dead lock does not occur
 
-		if (pingBucketRequestExecutor.contact).ID.Equals(nodeID) {
-			element = e
-			break
-		}
+	// Get write access and update the number of locked buckets and get the bucket to be updated
+	pingBucketRequestExecutor.bucket.readers.Acquire(context.TODO(), allowedReaders)
+	elementToReplace := pingBucketRequestExecutor.bucket.list.Back()
+	for i := 0; i < pingBucketRequestExecutor.bucket.bucketsLocked; i++ {
+		elementToReplace = elementToReplace.Prev()
 	}
 
-	// Receive response message through channel
+	pingBucketRequestExecutor.bucket.bucketsLocked += 1
+	pingBucketRequestExecutor.bucket.readers.Release(allowedReaders)
+	contactToReplace := elementToReplace.Value.(Contact)
+
+	// Send ping message to other node
+	error := pingBucketRequestExecutor.bucket.networkAPI.SendPingMessage(MyRoutingTable.me.ID, &contactToReplace, pingBucketRequestExecutor.id)
+
 	if error {
-		log.Info("Error to send bucket ping.")
-		pingBucketRequestExecutor.bucket.muxAccessBucket.Lock()
-		pingBucketRequestExecutor.bucket.list.Remove(element)
-		pingBucketRequestExecutor.bucket.list.PushFront(pingBucketRequestExecutor.bucket.contactToInsert)
-		pingBucketRequestExecutor.bucket.muxAccessBucket.Unlock()
-		pingBucketRequestExecutor.bucket.muxAdd.Unlock()
+		log.Error("Error to send bucket ping.")
+		pingBucketRequestExecutor.bucket.readers.Acquire(context.TODO(), allowedReaders)
+
+		pingBucketRequestExecutor.bucket.list.Remove(elementToReplace)
+		pingBucketRequestExecutor.bucket.list.PushFront(pingBucketRequestExecutor.contactToAdd)
+
+		pingBucketRequestExecutor.bucket.contactupdates.Release(1)
+		pingBucketRequestExecutor.bucket.bucketsLocked -= 1
+		pingBucketRequestExecutor.bucket.readers.Release(allowedReaders)
 		destroyRoutine(pingBucketRequestExecutor.id)
 	} else {
+		// Receive response message through channel
 		timeout := NewTimeout(pingBucketRequestExecutor.id, pingBucketRequestExecutor.ch)
 		timeout.start()
 		rpc := <-pingBucketRequestExecutor.ch
 		timeout.stop()
-		//timeout
-		pingBucketRequestExecutor.bucket.muxAccessBucket.Lock()
-		if element != nil {
-			if rpc == nil {
-				log.Info("PING bucket time out.")
-				pingBucketRequestExecutor.bucket.list.Remove(element)
-				pingBucketRequestExecutor.bucket.list.PushFront(pingBucketRequestExecutor.bucket.contactToInsert)
-			} else {
-				log.Info("Received PING bucket message response.")
-				pingBucketRequestExecutor.bucket.list.MoveToFront(element)
-			}
-		}
-		pingBucketRequestExecutor.bucket.muxAccessBucket.Unlock()
-		pingBucketRequestExecutor.bucket.muxAdd.Unlock()
 		destroyRoutine(pingBucketRequestExecutor.id)
+
+		pingBucketRequestExecutor.bucket.readers.Acquire(context.TODO(), allowedReaders)
+		if rpc == nil {
+			log.Info("PING bucket time out.")
+			pingBucketRequestExecutor.bucket.list.Remove(elementToReplace)
+			pingBucketRequestExecutor.bucket.list.PushFront(pingBucketRequestExecutor.contactToAdd)
+		} else {
+			log.Info("Received PING bucket message response.")
+			pingBucketRequestExecutor.bucket.list.MoveToFront(elementToReplace)
+		}
+
+		pingBucketRequestExecutor.bucket.contactupdates.Release(1)
+		pingBucketRequestExecutor.bucket.bucketsLocked -= 1
+		pingBucketRequestExecutor.bucket.readers.Release(allowedReaders)
 	}
 }
 

@@ -71,10 +71,12 @@ func contactToFindNode_Contact(contacts []Contact) []*protocol.FindNode_Contact 
 func FindNode_ContactToContact(findNodeContacts []*protocol.FindNode_Contact) []Contact {
 	contacts := make([]Contact, 0)
 	for _, findNodeContact := range findNodeContacts {
-		contact := Contact{}
-		contact.ID = KademliaIDFromSlice(findNodeContact.KademliaID)
-		contact.Address = findNodeContact.IPaddress
-		contacts = append(contacts, contact)
+		if findNodeContact.KademliaID != nil {
+			contact := Contact{}
+			contact.ID = KademliaIDFromSlice(findNodeContact.KademliaID)
+			contact.Address = findNodeContact.IPaddress
+			contacts = append(contacts, contact)
+		}
 	}
 
 	return contacts

@@ -9,7 +9,6 @@ import (
 	"time"
 )
 
-
 func containContact(bucket *bucket, contact *Contact) bool {
 	for e := bucket.list.Front(); e != nil; e = e.Next() {
 		nodeID := e.Value.(Contact).ID
@@ -106,11 +105,8 @@ func TestInsertContactWhenBucketIsFullAndOldestContactTimeOut(t *testing.T) {
 	testObj.On("SendPingMessage", MyRoutingTable.me.ID, &oldestContact, messageID).Return(false)
 	bucket.networkAPI = testObj
 
-	bucket.contactToInsert = contactToInsert
-	bucket.muxAdd.Lock()
-
 	pingBucketRequestExecutor := PingBucketRequestExecutor{}
-	pingBucketRequestExecutor.contact = oldestContact
+	pingBucketRequestExecutor.contactToAdd = contactToInsert
 	pingBucketRequestExecutor.bucket = bucket
 	pingBucketRequestExecutor.id = messageID
 	pingBucketRequestExecutor.ch = ch
@@ -146,10 +142,8 @@ func TestInsertContactWhenBucketIsFullAndErrorToSendPing(t *testing.T) {
 	testObj.On("SendPingMessage", MyRoutingTable.me.ID, &oldestContact, messageID).Return(true)
 	bucket.networkAPI = testObj
 
-	bucket.contactToInsert = contactToInsert
-	bucket.muxAdd.Lock()
 	pingBucketRequestExecutor := PingBucketRequestExecutor{}
-	pingBucketRequestExecutor.contact = oldestContact
+	pingBucketRequestExecutor.contactToAdd = contactToInsert
 	pingBucketRequestExecutor.bucket = bucket
 	pingBucketRequestExecutor.id = messageID
 	pingBucketRequestExecutor.ch = ch
@@ -178,16 +172,15 @@ func TestInsertContactWhenBucketIsFullAndOldestContactAnswer(t *testing.T) {
 
 	fillUpBucket(bucket)
 
-	bucket.contactToInsert = NewContact(NewKademliaID("FFFFFFFF00000100000000000000000000001234"), "localhost:8001")
+	contactToInsert := NewContact(NewKademliaID("FFFFFFFF00000100000000000000000000001234"), "localhost:8001")
 	oldestContact := NewContact(NewKademliaID("FFFFFFFF00000000000001000000003420000000"), "localhost:8001")
 
 	testObj := new(MockedNetwork)
 	testObj.On("SendPingMessage", MyRoutingTable.me.ID, &oldestContact, messageID).Return(false)
 	bucket.networkAPI = testObj
 
-	bucket.muxAdd.Lock()
 	pingBucketRequestExecutor := PingBucketRequestExecutor{}
-	pingBucketRequestExecutor.contact = oldestContact
+	pingBucketRequestExecutor.contactToAdd = contactToInsert
 	pingBucketRequestExecutor.bucket = bucket
 	pingBucketRequestExecutor.id = messageID
 	pingBucketRequestExecutor.ch = ch

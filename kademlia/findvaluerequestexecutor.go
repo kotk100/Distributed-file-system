@@ -6,11 +6,11 @@ import (
 )
 
 type FindValueRequestExecutor struct {
-	ch       chan *protocol.RPC
-	id       messageID
-	contact  Contact
-	fileHash []byte
-	callback *FindValueRequestCallback
+	ch         chan *protocol.RPC
+	id         messageID
+	contact    Contact
+	fileHash   []byte
+	callback   *FindValueRequestCallback
 	networkAPI NetworkAPI
 }
 
@@ -37,6 +37,7 @@ func (findValueRequestExecutor *FindValueRequestExecutor) execute() {
 		// Recieve response message through channel
 		rpc := <-findValueRequestExecutor.ch
 		timeout.stop()
+		destroyRoutine(findValueRequestExecutor.id)
 
 		log.Info("Received FindNode message response.")
 
@@ -54,7 +55,6 @@ func (findValueRequestExecutor *FindValueRequestExecutor) execute() {
 				MyRoutingTable.AddContactAsync(*contactSender)
 			}
 		}
-		destroyRoutine(findValueRequestExecutor.id)
 	}
 }
 

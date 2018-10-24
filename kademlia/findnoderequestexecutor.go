@@ -6,11 +6,11 @@ import (
 )
 
 type FindNodeRequestExecutor struct {
-	ch       chan *protocol.RPC
-	id       messageID
-	contact  Contact
-	target   *KademliaID
-	callback *FindNodeRequestCallback
+	ch         chan *protocol.RPC
+	id         messageID
+	contact    Contact
+	target     *KademliaID
+	callback   *FindNodeRequestCallback
 	networkAPI NetworkAPI
 }
 
@@ -34,10 +34,12 @@ func (findNodeRequestExecutor *FindNodeRequestExecutor) execute() {
 		// Recieve response message through channel
 		rpc := <-findNodeRequestExecutor.ch
 		timeout.stop()
+		destroyRoutine(findNodeRequestExecutor.id)
+
 		if findNodeRequestExecutor.callback != nil {
 			if rpc == nil {
 				log.WithFields(log.Fields{
-					"contact":findNodeRequestExecutor.contact,
+					"contact": findNodeRequestExecutor.contact,
 				}).Error("find node request time out.")
 				(*findNodeRequestExecutor.callback).errorRequest(findNodeRequestExecutor.contact)
 			} else {
@@ -53,7 +55,6 @@ func (findNodeRequestExecutor *FindNodeRequestExecutor) execute() {
 				MyRoutingTable.AddContactAsync(*contactSender)
 			}
 		}
-		destroyRoutine(findNodeRequestExecutor.id)
 	}
 }
 

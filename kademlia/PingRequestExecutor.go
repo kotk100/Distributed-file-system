@@ -32,6 +32,7 @@ func (requestExecutorPing *PingRequestExecutor) execute() {
 		// Recieve response message through channel
 		rpc := <-requestExecutorPing.ch
 		timeout.stop()
+		destroyRoutine(requestExecutorPing.id)
 
 		log.Info("Received PING message response.")
 		if rpc == nil {

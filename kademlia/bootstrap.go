@@ -16,7 +16,6 @@ func (bootstrap *Bootstrap) processKClosest(KClosestOfTarget []LookupNodeContact
 	log.Info("Bootstrap completed.")
 
 	// Refresh empty buckets
-	//TODO too many find_node requests, stops working because of it.
 	log.Info("Refreshing empty buckets.")
 
 	for i := 0; i < IDLength*8; i++ {
@@ -24,10 +23,9 @@ func (bootstrap *Bootstrap) processKClosest(KClosestOfTarget []LookupNodeContact
 		task.id = strconv.Itoa(i)
 		task.taskType = RefreshBucket
 
-		// TODO only one find node at a time?
 		// Check if bucket already has contacts
 		if MyRoutingTable.buckets[i].Len() < 1 {
-			timeToExecute := time.Now().Add(time.Duration(i) * 20 * time.Second)
+			timeToExecute := time.Now().Add(time.Duration(i) * 1000 * time.Millisecond)
 			PeriodicTasksReference.updateTaskWithTime(task, &timeToExecute)
 		}
 	}

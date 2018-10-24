@@ -12,6 +12,7 @@ import (
 	"os"
 	"runtime"
 	"runtime/pprof"
+	"strconv"
 )
 
 type StoreFileResponse struct {
@@ -147,7 +148,7 @@ func main() {
 	// Test saving files
 	scanner := bufio.NewScanner(os.Stdin)
 	for {
-		fmt.Println("Select command: \n1. for STORE\n2. for FIND_VALUE\n3. for Unpin\n4. Print stack traces\n5. Print routing table")
+		fmt.Println("Select command: \n1. for STORE\n2. for FIND_VALUE\n3. for Unpin\n4. Print stack traces\n5. Print routing table\n6. Print specific bucket")
 		scanner.Scan()
 		input := scanner.Text()
 
@@ -185,6 +186,11 @@ func main() {
 			pprof.Lookup("goroutine").WriteTo(os.Stdout, 1)
 		case "5":
 			kademlia.MyRoutingTable.Print()
+		case "6":
+			fmt.Println("Write bucket number:")
+			scanner.Scan()
+			num, _ := strconv.Atoi(scanner.Text())
+			kademlia.MyRoutingTable.PrintBucket(num)
 		default:
 			continue
 		}

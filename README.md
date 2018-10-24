@@ -1,7 +1,8 @@
 # Distributed-file-system
 
 ## Build docker image
-docker build -t test/dfs -f "./Docker files/Dockerfile" .
+`docker build -t test/dfs -f "./Docker files/Dockerfile" .`
+`docker build -t test/sd -f "./docker_file/Dockerfile" .`
 
 ## Running the project on local computer
 1. `docker swarm init` //Initiate Swarm manager

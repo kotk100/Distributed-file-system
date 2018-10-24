@@ -3,13 +3,16 @@ package kademlia
 import (
 	log "github.com/sirupsen/logrus"
 	"strconv"
-	"time"
+	"sync"
 )
 
 type RefreshBucketTask struct {
-	task    *Task
-	orgTime time.Duration
+	task *Task
+	//orgTime time.Duration
 }
+
+// Only allow one find_node procedure for refreshing at once
+var refreshBucketLock sync.Mutex
 
 func (refreshBucketTask *RefreshBucketTask) execute() {
 	// Get bucket id
@@ -30,13 +33,14 @@ func (refreshBucketTask *RefreshBucketTask) execute() {
 	target.ID = randomID
 
 	// Make node_find for that ID
+	refreshBucketLock.Lock()
 	lookupNode := NewLookupNode(target, refreshBucketTask)
 	lookupNode.Start()
 }
 
 func (refreshBucketTask *RefreshBucketTask) setTask(task *Task) {
 	refreshBucketTask.task = task
-	refreshBucketTask.orgTime = task.executeEvery
+	//refreshBucketTask.orgTime = task.executeEvery
 }
 
 func (refreshBucketTask *RefreshBucketTask) processKClosest(KClosestOfTarget []LookupNodeContact) {
@@ -57,4 +61,5 @@ func (refreshBucketTask *RefreshBucketTask) processKClosest(KClosestOfTarget []L
 	} else {
 		refreshBucketTask.task.executeEvery = refreshBucketTask.orgTime
 	}*/
+	refreshBucketLock.Unlock()
 }

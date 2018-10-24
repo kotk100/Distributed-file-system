@@ -77,7 +77,9 @@ func (lookupNode *LookupNode) Start() {
 func (lookupNode *LookupNode) successRequest(contactAsked Contact, KClosestOfTarget []Contact) {
 	lookupNode.changeLookupContactState(contactAsked, ASKED)
 	for _, v := range KClosestOfTarget {
-		lookupNode.handleNewContact(v)
+		if v.ID != nil {
+			lookupNode.handleNewContact(v)
+		}
 	}
 	log.WithFields(log.Fields{
 		"Contacts":         contactAsked,
@@ -179,7 +181,7 @@ func (lookupNode *LookupNode) isFailedContact(contact *Contact) bool {
 
 func (lookupNode *LookupNode) contactIsInShortlist(contact *Contact) bool {
 	for _, v := range lookupNode.shortlist {
-		if v.contact.ID.Equals(contact.ID) { // TODO runtime error: invalid memory address or nil pointer dereference
+		if v.contact.ID != nil && v.contact.ID.Equals(contact.ID) { // TODO runtime error: invalid memory address or nil pointer dereference, added v.contact.ID != nil
 			return true
 		}
 	}

@@ -186,3 +186,8 @@ func (routingTable *RoutingTable) Print() {
 		routingTable.buckets[i].print()
 	}
 }
+
+func (routingTable *RoutingTable) PrintBucket(i int) {
+	log.Info("Bucket contents:")
+	routingTable.buckets[i].printContacts()
+}

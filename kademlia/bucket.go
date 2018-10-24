@@ -3,24 +3,30 @@ package kademlia
 import (
 	"container/list"
 	log "github.com/sirupsen/logrus"
-	"sync"
+	"golang.org/x/net/context"
+	syncSem "golang.org/x/sync/semaphore"
 )
 
 // bucket definition
 // contains a List
 type bucket struct {
-	list            *list.List
-	muxAdd          sync.Mutex
-	muxAccessBucket sync.Mutex
-	contactToInsert Contact
-	networkAPI      NetworkAPI
+	list           *list.List
+	readers        *syncSem.Weighted
+	contactupdates *syncSem.Weighted
+	bucketsLocked  int
+	networkAPI     NetworkAPI
 }
+
+const allowedReaders = 100
 
 // newBucket returns a new instance of a bucket
 func newBucket() *bucket {
 	bucket := &bucket{}
 	bucket.list = list.New()
 	bucket.networkAPI = &Network{}
+	bucket.readers = syncSem.NewWeighted(allowedReaders)
+	bucket.contactupdates = syncSem.NewWeighted(bucketSize)
+	bucket.bucketsLocked = 0
 	return bucket
 }
 
@@ -30,42 +36,40 @@ func (bucket *bucket) AddContact(contact Contact) {
 	if MyRoutingTable.GetMe().ID.Equals(contact.ID) {
 		return
 	}
-
-	bucket.muxAdd.Lock()
-	bucket.muxAccessBucket.Lock()
-
 	log.WithFields(log.Fields{
 		"Contact": contact,
 	}).Debug("Updating bucket.")
-	var element *list.Element
-	for e := bucket.list.Front(); e != nil; e = e.Next() {
-		nodeID := e.Value.(Contact).ID
 
-		if (contact).ID.Equals(nodeID) {
+	// Find if concact exsits
+	bucket.readers.Acquire(context.TODO(), allowedReaders)
+	var element *list.Element
+	elementPosition := 0 //From back of list
+	for e := bucket.list.Back(); e != nil; e = e.Prev() {
+		if (contact).ID.Equals(e.Value.(Contact).ID) {
 			element = e
+			break
 		}
+		elementPosition += 1
 	}
 
 	if element == nil {
 		if bucket.list.Len() < bucketSize {
+			//add to the front of the list
 			bucket.list.PushFront(contact)
-
-			bucket.muxAccessBucket.Unlock()
-			bucket.muxAdd.Unlock()
+			bucket.readers.Release(allowedReaders)
 		} else {
-			bucket.contactToInsert = contact
-			contact := bucket.list.Back().Value.(Contact)
-			bucket.muxAccessBucket.Unlock()
+			bucket.readers.Release(allowedReaders)
 			pingBucketRequestExecutor := PingBucketRequestExecutor{}
-			pingBucketRequestExecutor.contact = contact
+			pingBucketRequestExecutor.contactToAdd = contact
 			pingBucketRequestExecutor.bucket = bucket
 			createRoutine(&pingBucketRequestExecutor)
 		}
 	} else {
-		bucket.list.MoveToFront(element)
-
-		bucket.muxAccessBucket.Unlock()
-		bucket.muxAdd.Unlock()
+		// If bucket is locked because we are waiting for ping do nothing as the other routine will either move it to the front or replace it if it fails to respond otherwise move it to front
+		if bucket.bucketsLocked <= elementPosition {
+			bucket.list.MoveToFront(element)
+		}
+		bucket.readers.Release(allowedReaders)
 	}
 }
 
@@ -73,13 +77,13 @@ func (bucket *bucket) AddContact(contact Contact) {
 // the distance has already been calculated
 func (bucket *bucket) GetContactAndCalcDistance(target *KademliaID) []Contact {
 	var contacts []Contact
-	bucket.muxAccessBucket.Lock()
+	bucket.readers.Acquire(context.TODO(), 1)
 	for elt := bucket.list.Front(); elt != nil; elt = elt.Next() {
 		contact := elt.Value.(Contact)
 		contact.CalcDistance(target)
 		contacts = append(contacts, contact)
 	}
-	bucket.muxAccessBucket.Unlock()
+	bucket.readers.Release(1)
 	return contacts
 }
 
@@ -90,19 +94,32 @@ func (bucket *bucket) Len() int {
 
 func (bucket *bucket) GetContacts() *[]Contact {
 	contacts := []Contact{}
-
+	bucket.readers.Acquire(context.TODO(), 1)
 	for elt := bucket.list.Front(); elt != nil; elt = elt.Next() {
 		contact := elt.Value.(Contact)
 		contacts = append(contacts, contact)
 	}
-
+	bucket.readers.Release(1)
 	return &contacts
 }
 
 func (bucket *bucket) print() {
-	bucket.muxAccessBucket.Lock()
+	bucket.readers.Acquire(context.TODO(), 1)
 	log.WithFields(log.Fields{
 		"contents": bucket.list,
 	}).Info("")
-	bucket.muxAccessBucket.Unlock()
+	bucket.readers.Release(1)
+}
+
+func (bucket *bucket) printContacts() {
+	bucket.readers.Acquire(context.TODO(), 1)
+	i := 0
+	for e := bucket.list.Front(); e != nil; e = e.Next() {
+		log.WithFields(log.Fields{
+			"Contact number": i,
+			"contents":       e,
+		}).Info("")
+		i++
+	}
+	bucket.readers.Release(1)
 }
